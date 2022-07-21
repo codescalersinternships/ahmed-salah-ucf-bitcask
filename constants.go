@@ -5,6 +5,7 @@ import "path"
 const (
 	TombStone     = "bitcask_tombstone"
 	MaxFileSize = 2147483648
+	MaxPendingSize = 1024
 )
 
 var (

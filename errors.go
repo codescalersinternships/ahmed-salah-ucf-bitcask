@@ -1,7 +1,8 @@
 package bitcask
 
 var (
-	ErrNullKey = BitCaskError("nil keys can't be allowed")
+	ErrNullKeyOrValue = BitCaskError("nil keys can't be allowed")
+	ErrHasNoWritePerms = BitCaskError("you don't have write permissions")
 )
 
 type BitCaskError string

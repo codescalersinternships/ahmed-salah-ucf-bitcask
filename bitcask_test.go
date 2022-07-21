@@ -97,7 +97,7 @@ func TestGet(t *testing.T) {
 		bc, _ := Open(testBitcaskPath)
 		_, err := bc.Get(nil)
 
-		assertErrorMsg(t, err, ErrNullKey)
+		assertErrorMsg(t, err, ErrNullKeyOrValue)
 	})
 
 	t.Run("data in pending writes", func(t *testing.T) {

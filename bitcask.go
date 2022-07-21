@@ -15,8 +15,8 @@ var pendingWrites map[string][]byte
 
 type Record struct {
 	fileId string
-	valueSize uint
-	valuePosition uint
+	valueSize int
+	valuePosition int64
 	timeStamp time.Time
 }
 
@@ -28,7 +28,7 @@ type Config struct {
 
 type BitCask struct {
 	activeFile *os.File
-	cursor uint
+	cursor int
 	dirName string
 	keydir Keydir
 	config Config
@@ -57,7 +57,7 @@ func Open(directoryPath string, config ...Config) (*BitCask, error) {
 // err == io.EOF if can't read the complete value from file
 func (bc *BitCask) Get(key []byte) ([]byte, error) {
 	if key == nil {
-		return nil, ErrNullKey
+		return nil, ErrNullKeyOrValue
 	}
 	var data []byte
 	var ok bool
@@ -83,8 +83,31 @@ func (bc *BitCask) Get(key []byte) ([]byte, error) {
 	}
 }
 
+// Put store a key and value in a bitcask datastore
+// 		sync the write if sync_on_put option is enabled.
 func (bc *BitCask) Put(key, value []byte) error {
-	return nil
+	if key == nil || value == nil {
+		return ErrNullKeyOrValue
+	}
+
+	if !bc.config.writePermission {
+		return ErrHasNoWritePerms
+	}
+
+	var err error
+	if !bc.config.syncOnPut {
+		if _, ok := pendingWrites[string(key)]; ok {
+			pendingWrites[string(key)] = value
+
+		} else {
+			err = bc.loadToPendingWrites(key, value)
+		}
+
+	} else {
+		err = bc.appendItem(key, value)
+	}
+	
+	return err
 }
 
 func (bc *BitCask) Delete(key []byte) error {
