@@ -13,10 +13,15 @@ type Keydir map[Key] Record
 type pendingWrites map[Key][]byte
 
 type Record struct {
-	fileId *os.File
+	fileId string
 	valueSize uint
 	valuePosition uint
 	timeStamp time.Time
+}
+
+type Config struct {
+	writePermission bool
+	syncOnPut bool
 }
 
 
@@ -28,14 +33,21 @@ type BitCask struct {
 	config Config
 }
 
-type Config struct {
-	writePermission bool
-	syncOnPut bool
-}
+// Open opens files at directory at path directoryName, and parses
+// these files into in-memory structure keydir. if the directory
+// doesn't exist at this path, it creates a new directory. 
+func Open(directoryPath string, config ...Config) (*BitCask, error){
+	if _, err := os.Stat(directoryPath); os.IsNotExist(err) {
+		err = os.MkdirAll(directoryPath, 0700)
+		if err != nil {
+			return nil, err
+		}
+	}
 
+	// build bitcask
+	bc, err := new(directoryPath, config)
 
-func (bc *BitCask) Open(directoryName string, config ...Config) {
-	
+	return bc, err
 }
 
 func (bc *BitCask) Get(key []byte) ([]byte, error) {
