@@ -12,6 +12,14 @@ import (
 	"time"
 )
 
+
+func (bc *BitCask) isExist(key []byte) error {
+	if _, ok := bc.keydir[string(key)]; !ok {
+		return BitCaskError(fmt.Sprintf("%q: %s", key, ErrKeyNotExist.Error()))
+	}
+	return nil
+}
+
 func parseKeydirData(keydirData string) (Keydir, error) {
 	var keydir Keydir = Keydir{}
 	var vSz int
@@ -107,7 +115,7 @@ func (bc *BitCask) makeItem(key, value []byte, timeStamp time.Time) []byte {
 	keySize := uint32(len(key))
 	valueSize := uint32(len(value))
 
-	item := make([]byte, 12, 16+keySize+valueSize)
+	item := make([]byte, 16, 16+keySize+valueSize)
 
 	binary.BigEndian.PutUint32(item[4:], tStamp)
 	binary.BigEndian.PutUint32(item[8:], keySize)

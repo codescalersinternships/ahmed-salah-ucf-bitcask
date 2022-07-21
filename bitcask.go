@@ -60,12 +60,16 @@ func (bc *BitCask) Get(key []byte) ([]byte, error) {
 		return nil, ErrNullKeyOrValue
 	}
 	var data []byte
-	var ok bool
 	var n int
 	var record Record
 
-	if _, ok = pendingWrites[string(key)]; ok {
-		return pendingWrites[string(key)], nil
+	if err := bc.isExist(key); err != nil {
+		return nil, err
+	}
+
+	if value, ok := pendingWrites[string(key)]; ok {
+		return value, nil
+
 	} else {
 		record = bc.keydir[string(key)]
 		data = make([]byte, record.valueSize)
@@ -73,6 +77,7 @@ func (bc *BitCask) Get(key []byte) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("can't open file: " + record.fileId)
 		}
+		
 		n, err = file.ReadAt(data, int64(record.valuePosition))
 		if err != nil {
 			return nil, fmt.Errorf("read only " + fmt.Sprintf("%d", n) + " bytes out of " +

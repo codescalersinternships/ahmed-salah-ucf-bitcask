@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestOpen(t *testing.T) {
@@ -100,8 +101,17 @@ func TestGet(t *testing.T) {
 		assertErrorMsg(t, err, ErrNullKeyOrValue)
 	})
 
+    t.Run("key doesn't exist", func(t *testing.T) {
+        bc, _ := Open(testBitcaskPath)
+        _, err := bc.Get([]byte("unknown key"))
+        want := BitCaskError("\"unknown key\": key doesn't exist")
+
+        assertErrorMsg(t, err, want)
+    })
+
 	t.Run("data in pending writes", func(t *testing.T) {
 		bc, _ := Open(testBitcaskPath, syncConfig)
+        bc.keydir["name"] = Record{}
 		pendingWrites["name"] = []byte("salah")
 		got, _ := bc.Get([]byte("name"))
 		want := "salah"
@@ -109,10 +119,55 @@ func TestGet(t *testing.T) {
 		assertEqualStrings(t, string(got), want)
 	})
 
+    t.Run("existing value from file", func(t *testing.T) {
+        os.MkdirAll(testBitcaskPath, 0700)
+        file, _ := os.Create(testFilePath)
+
+        bc, _ := Open(testBitcaskPath)
+        file.Write(bc.makeItem([]byte("key"), []byte("value"), time.Now()))
+
+
+        bc.keydir["key"] = Record {
+            fileId:  testFilePath,
+            valueSize: len("value"),
+            valuePosition:  int64(16 + len("key")),
+            timeStamp:  time.Now(),
+        }
+
+        got, _ := bc.Get([]byte("key"))
+        want := "value"
+
+        assertEqualStrings(t, string(got), want)
+
+        os.RemoveAll(testBitcaskPath)
+    })
+
+    t.Run("invalid file id", func(t *testing.T) {
+        os.MkdirAll(testBitcaskPath, 0700)
+        file, _ := os.Create(testFilePath)
+
+        bc, _ := Open(testBitcaskPath)
+        file.Write(bc.makeItem([]byte("key"), []byte("value"), time.Now()))
+
+
+        bc.keydir["key"] = Record {
+            fileId:  "invalid file id",
+            valueSize: len("value"),
+            valuePosition:  int64(16 + len("key")),
+            timeStamp:  time.Now(),
+        }
+
+        _, err := bc.Get([]byte("key"))
+        want := BitCaskError("can't open file: invalid file id")
+
+        assertErrorMsg(t, err, want)
+
+        os.RemoveAll(testBitcaskPath)
+    })
+
     
-	/* To-Do:  "Data from file" test
-    "Invalid file id" test
-    "Read files less than item size" test
+	/* To-Do:
+              "Read files less than item size" test
 	*/
     os.RemoveAll(testBitcaskPath)
 }
@@ -122,17 +177,17 @@ func TestGet(t *testing.T) {
 func assertEqualStrings(t testing.TB, got, want string) {
 	t.Helper()
 	if (got != want) {
-		t.Errorf("got %s want %s", got, want)
+		t.Errorf("got:\n%q\nwant:\n%q", got, want)
 	}
 }
 
 func assertErrorMsg(t testing.TB, err, want error) {
 	t.Helper()
 	if err == nil {
-		t.Fatal("didn't get error, expected to get an error")
+		t.Fatalf("didn't get error, expected to get an error %q", want.Error())
 	}
 
 	if err.Error() != want.Error() {
-		t.Errorf("got %q want %q", err.Error(), want)
+		t.Errorf("got:\n%q\nwant:\n%q", err.Error(), want)
 	}
 }
