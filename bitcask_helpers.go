@@ -34,7 +34,7 @@ func parseKeydirData(keydirData string) (Keydir, error) {
 		keyAndValue := strings.Split(line, " ")
 		key := keyAndValue[0]
 		value := keyAndValue[1:]
-		if vSz, err = strconv.Atoi(value[2]); err != nil {
+		if vSz, err = strconv.Atoi(value[1]); err != nil {
 			return nil, err
 		}
 		if vPos, _ = strconv.Atoi(value[2]); err != nil {
