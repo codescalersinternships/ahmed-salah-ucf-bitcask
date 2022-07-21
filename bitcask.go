@@ -10,6 +10,7 @@ import (
 
 
 type Keydir map[string] Record
+
 var pendingWrites map[string][]byte
 
 type Record struct {
@@ -64,7 +65,7 @@ func (bc *BitCask) Get(key []byte) ([]byte, error) {
 	var record Record
 
 	if _, ok = pendingWrites[string(key)]; ok {
-		return pendingWrites[string(key)], nil	// TO-DO: need to get value not the complete line
+		return pendingWrites[string(key)], nil
 	} else {
 		record = bc.keydir[string(key)]
 		data = make([]byte, record.valueSize)

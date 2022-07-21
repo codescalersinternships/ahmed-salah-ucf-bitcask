@@ -111,6 +111,11 @@ func TestGet(t *testing.T) {
 
 		assertEqualStrings(t, string(got), want)
 	})
+
+	/* To-Do:  "Data from file" test
+			   "Invalid file id" testr
+	  		   "Read files less than item size" test
+	*/
 }
 
 
