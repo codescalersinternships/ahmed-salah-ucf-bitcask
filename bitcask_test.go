@@ -3,7 +3,6 @@ package bitcask
 import (
 	"fmt"
 	"os"
-	"path"
 	"testing"
 )
 
@@ -87,12 +86,17 @@ func TestOpen(t *testing.T) {
     })
 
 	t.Run("bitcask has no permissions", func(t *testing.T) {
-        os.MkdirAll(path.Join("no open dir"), 000)
+        os.MkdirAll(testNoOpenDirPath, 000)
         _, err := Open("no open dir")
         if err == nil {
             t.Fatal("expected Error since path cannot be openned")
         }
+        os.RemoveAll(testNoOpenDirPath)
     })
+
+    /* To-Do:  "concurrent process load exist keydir" test
+		
+	*/
 }
 
 func TestGet(t *testing.T) {
@@ -113,10 +117,11 @@ func TestGet(t *testing.T) {
 	})
 
 	/* To-Do:  "Data from file" test
-			   "Invalid file id" testr
+			   "Invalid file id" test
 	  		   "Read files less than item size" test
 	*/
 }
+
 
 
 func assertEqualStrings(t testing.TB, got, want string) {

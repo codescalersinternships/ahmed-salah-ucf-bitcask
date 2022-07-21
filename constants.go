@@ -17,4 +17,5 @@ var (
 var (
 	testBitcaskPath = path.Join("bitcask")
 	testKeyDirPath = path.Join("bitcask", "keydir.cask")
+	testNoOpenDirPath = path.Join("no open dir")
 )

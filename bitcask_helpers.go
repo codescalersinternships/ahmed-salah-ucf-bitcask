@@ -50,6 +50,7 @@ func new(directoryPath string, config []Config) (*BitCask, error) {
 	var file *os.File
 	var err error
 	var keydir Keydir
+	pendingWrites = make(map[string][]byte)
 
 	if config == nil {
 		opts = DefaultConfig
@@ -67,7 +68,6 @@ func new(directoryPath string, config []Config) (*BitCask, error) {
 		return nil, err
 	}
 
-	pendingWrites = make(map[string][]byte)
 	keydirData, err := os.ReadFile(path.Join(directoryPath, "keydir.cask"))
 	if err != nil {
 		keydir = Keydir{}
