@@ -123,13 +123,13 @@ func TestGet(t *testing.T) {
 
 	t.Run("data in pending writes", func(t *testing.T) {
 		bc, _ := Open(testBitcaskPath, syncConfig)
-        bc.keydir["name"] = Record{}
+		bc.keydir["name"] = Record{}
 		pendingWrites["name"] = []byte("salah")
 		got, _ := bc.Get([]byte("name"))
 		want := "salah"
 
 		assertEqualStrings(t, string(got), want)
-        os.RemoveAll(testBitcaskPath)
+		os.RemoveAll(testBitcaskPath)
 	})
 
     t.Run("existing value from file", func(t *testing.T) {
