@@ -15,7 +15,7 @@ import (
 
 func (bc *BitCask) isExist(key []byte) error {
 	if _, ok := bc.keydir[string(key)]; !ok {
-		return BitCaskError(fmt.Sprintf("%q: %s", key, ErrKeyNotExist.Error()))
+		return BitCaskError(fmt.Sprintf("%q: %s", string(key), ErrKeyNotExist.Error()))
 	}
 	return nil
 }

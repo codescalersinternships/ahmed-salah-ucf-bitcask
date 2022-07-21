@@ -14,6 +14,7 @@ func TestOpen(t *testing.T) {
         if _, err := os.Stat(testBitcaskPath); os.IsNotExist(err) {
             t.Errorf("expected to find directory: %q", testBitcaskPath)
         }
+        os.RemoveAll(testBitcaskPath)
     })
 
 	t.Run("new bitcask with default config given explict", func(t *testing.T) {
@@ -22,6 +23,7 @@ func TestOpen(t *testing.T) {
         if _, err := os.Stat(testBitcaskPath); os.IsNotExist(err) {
             t.Errorf("expected to find directory: %q", testBitcaskPath)
         }
+        os.RemoveAll(testBitcaskPath)
     })
 
 	t.Run("new bitcask with read and write permission", func(t *testing.T) {
@@ -30,6 +32,7 @@ func TestOpen(t *testing.T) {
         if _, err := os.Stat(testBitcaskPath); os.IsNotExist(err) {
             t.Errorf("expected to find directory: %q", testBitcaskPath)
         }
+        os.RemoveAll(testBitcaskPath)
     })
 
 	t.Run("new bitcask with sync permission", func(t *testing.T) {
@@ -38,6 +41,7 @@ func TestOpen(t *testing.T) {
         if _, err := os.Stat(testBitcaskPath); os.IsNotExist(err) {
             t.Errorf("expected to find directory: %q", testBitcaskPath)
         }
+        os.RemoveAll(testBitcaskPath)
     })
 
 	t.Run("existing bitcask with read and write permission", func(t *testing.T) {
@@ -51,6 +55,7 @@ func TestOpen(t *testing.T) {
         if _, err := os.Stat(testBitcaskPath); os.IsNotExist(err) {
             t.Errorf("expected to find directory: %q", testBitcaskPath)
         }
+        os.RemoveAll(testBitcaskPath)
     })
 
 	t.Run("existing bitcask with sync permission", func(t *testing.T) {
@@ -64,6 +69,8 @@ func TestOpen(t *testing.T) {
         if _, err := os.Stat(testBitcaskPath); os.IsNotExist(err) {
             t.Errorf("expected to find directory: %q", testBitcaskPath)
         }
+
+        os.RemoveAll(testBitcaskPath)
     })
 
 	t.Run("existing bitcask with default options", func(t *testing.T) {
@@ -77,6 +84,8 @@ func TestOpen(t *testing.T) {
         if _, err := os.Stat(testBitcaskPath); os.IsNotExist(err) {
             t.Errorf("expected to find directory: %q", testBitcaskPath)
         }
+
+        os.RemoveAll(testBitcaskPath)
     })
 
 	t.Run("bitcask has no permissions", func(t *testing.T) {
@@ -85,12 +94,13 @@ func TestOpen(t *testing.T) {
         if err == nil {
             t.Fatal("expected Error since path cannot be openned")
         }
+
+        os.RemoveAll(testNoOpenDirPath)
     })
 
     /* To-Do:  "concurrent process load exist keydir" test
 		
 	*/
-    os.RemoveAll(testNoOpenDirPath)
 }
 
 func TestGet(t *testing.T) {
@@ -99,6 +109,7 @@ func TestGet(t *testing.T) {
 		_, err := bc.Get(nil)
 
 		assertErrorMsg(t, err, ErrNullKeyOrValue)
+        os.RemoveAll(testBitcaskPath)
 	})
 
     t.Run("key doesn't exist", func(t *testing.T) {
@@ -107,6 +118,7 @@ func TestGet(t *testing.T) {
         want := BitCaskError("\"unknown key\": key doesn't exist")
 
         assertErrorMsg(t, err, want)
+        os.RemoveAll(testBitcaskPath)
     })
 
 	t.Run("data in pending writes", func(t *testing.T) {
@@ -117,6 +129,7 @@ func TestGet(t *testing.T) {
 		want := "salah"
 
 		assertEqualStrings(t, string(got), want)
+        os.RemoveAll(testBitcaskPath)
 	})
 
     t.Run("existing value from file", func(t *testing.T) {
@@ -138,7 +151,6 @@ func TestGet(t *testing.T) {
         want := "value"
 
         assertEqualStrings(t, string(got), want)
-
         os.RemoveAll(testBitcaskPath)
     })
 
@@ -161,7 +173,6 @@ func TestGet(t *testing.T) {
         want := BitCaskError("can't open file: invalid file id")
 
         assertErrorMsg(t, err, want)
-
         os.RemoveAll(testBitcaskPath)
     })
 
@@ -169,7 +180,6 @@ func TestGet(t *testing.T) {
 	/* To-Do:
               "Read files less than item size" test
 	*/
-    os.RemoveAll(testBitcaskPath)
 }
 
 
