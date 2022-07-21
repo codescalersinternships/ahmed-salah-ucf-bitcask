@@ -3,14 +3,14 @@
 package bitcask
 
 import (
+	"fmt"
 	"os"
 	"time"
 )
 
 
-type Key string
-type Keydir map[Key] Record
-type pendingWrites map[Key][]byte
+type Keydir map[string] Record
+var pendingWrites map[string][]byte
 
 type Record struct {
 	fileId string
@@ -36,7 +36,7 @@ type BitCask struct {
 // Open opens files at directory at path directoryName, and parses
 // these files into in-memory structure keydir. if the directory
 // doesn't exist at this path, it creates a new directory. 
-func Open(directoryPath string, config ...Config) (*BitCask, error){
+func Open(directoryPath string, config ...Config) (*BitCask, error) {
 	if _, err := os.Stat(directoryPath); os.IsNotExist(err) {
 		err = os.MkdirAll(directoryPath, 0700)
 		if err != nil {
@@ -50,8 +50,36 @@ func Open(directoryPath string, config ...Config) (*BitCask, error){
 	return bc, err
 }
 
+// Get retrieves a value by key from a bitcask data store.
+// returns err == ErrNullKey if key has nil value
+// err == *pathError if can't open file
+// err == io.EOF if can't read the complete value from file
 func (bc *BitCask) Get(key []byte) ([]byte, error) {
-	return nil, nil
+	if key == nil {
+		return nil, ErrNullKey
+	}
+	var data []byte
+	var ok bool
+	var n int
+	var record Record
+
+	if _, ok = pendingWrites[string(key)]; ok {
+		return pendingWrites[string(key)], nil	// TO-DO: need to get value not the complete line
+	} else {
+		record = bc.keydir[string(key)]
+		data = make([]byte, record.valueSize)
+		file, err := os.Open(record.fileId)
+		if err != nil {
+			return nil, fmt.Errorf("can't open file: " + record.fileId)
+		}
+		n, err = file.ReadAt(data, int64(record.valuePosition))
+		if err != nil {
+			return nil, fmt.Errorf("read only " + fmt.Sprintf("%d", n) + " bytes out of " +
+							fmt.Sprintf("%d", record.valueSize))
+		}
+
+		return data, nil
+	}
 }
 
 func (bc *BitCask) Put(key, value []byte) error {

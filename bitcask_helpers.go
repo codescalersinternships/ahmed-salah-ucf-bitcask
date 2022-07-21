@@ -10,8 +10,12 @@ import (
 	"strconv"
 )
 
-func parseKeydirData(keydirData string) Keydir {
+func parseKeydirData(keydirData string) (Keydir, error) {
 	var keydir Keydir = Keydir{}
+	var vSz int
+	var vPos int
+	var t time.Time
+	var err error
 	scanner := bufio.NewScanner(strings.NewReader(keydirData))
 
 	for scanner.Scan() {
@@ -20,19 +24,25 @@ func parseKeydirData(keydirData string) Keydir {
 		keyAndValue := strings.Split(line, " ")
 		key := keyAndValue[0]
 		value := keyAndValue[1:]
-		vSz, _ := strconv.Atoi(value[2])
-		vpos, _ := strconv.Atoi(value[2])
-		t, _ := time.Parse(time.RFC3339, value[3])
+		if vSz, err = strconv.Atoi(value[2]); err != nil {
+			return nil, err
+		}
+		if vPos, _ = strconv.Atoi(value[2]); err != nil {
+			return nil, err
+		}
+		if t, _ = time.Parse(time.RFC3339, value[3]); err != nil {
+			return nil, err
+		}
 		
-		keydir[Key(key)] = Record{
+		keydir[key] = Record{
 			fileId: value[1],
 			valueSize: uint(vSz),
-			valuePosition: uint(vpos),
+			valuePosition: uint(vPos),
 			timeStamp: t,
 		}
 	}
 
-	return keydir
+	return keydir, err
 }
 
 func new(directoryPath string, config []Config) (*BitCask, error) {
@@ -57,11 +67,14 @@ func new(directoryPath string, config []Config) (*BitCask, error) {
 		return nil, err
 	}
 
+	pendingWrites = make(map[string][]byte)
 	keydirData, err := os.ReadFile(path.Join(directoryPath, "keydir.cask"))
 	if err != nil {
 		keydir = Keydir{}
 	} else {
-		keydir = parseKeydirData(string(keydirData))
+		if keydir, err = parseKeydirData(string(keydirData)); err != nil {
+			return nil, err
+		}
 	}
 
 	bc := &BitCask{
