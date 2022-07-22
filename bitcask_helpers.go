@@ -20,12 +20,11 @@ func (bc *BitCask) isExist(key []byte) error {
 	return nil
 }
 
-func parseKeydirData(keydirData string) (Keydir, error) {
+func parseKeydirData(keydirData string) Keydir {
 	var keydir Keydir = Keydir{}
 	var vSz int
 	var vPos int
 	var t time.Time
-	var err error
 	scanner := bufio.NewScanner(strings.NewReader(keydirData))
 
 	for scanner.Scan() {
@@ -34,15 +33,10 @@ func parseKeydirData(keydirData string) (Keydir, error) {
 		keyAndValue := strings.Split(line, " ")
 		key := keyAndValue[0]
 		value := keyAndValue[1:]
-		if vSz, err = strconv.Atoi(value[1]); err != nil {
-			return nil, err
-		}
-		if vPos, _ = strconv.Atoi(value[2]); err != nil {
-			return nil, err
-		}
-		if t, _ = time.Parse(time.RFC3339, value[3]); err != nil {
-			return nil, err
-		}
+
+		vSz, _ = strconv.Atoi(value[1])
+		vPos, _ = strconv.Atoi(value[2])
+		t, _ = time.Parse(time.RFC3339, value[3])
 		
 		keydir[key] = Record{
 			fileId: value[1],
@@ -52,29 +46,24 @@ func parseKeydirData(keydirData string) (Keydir, error) {
 		}
 	}
 
-	return keydir, err
+	return keydir
 }
 
-func newActiveFile(directoryPath string, config Config) (*os.File, error){
+func newActiveFile(directoryPath string, config Config) (*os.File){
 	var file *os.File
-	var err error
 	filename := fmt.Sprintf("%d.cask", time.Now().UnixMilli())
 	if config.writePermission {
-		file, err = os.OpenFile(path.Join(directoryPath, filename), os.O_CREATE, 0600)
+		file, _ = os.OpenFile(path.Join(directoryPath, filename), os.O_CREATE, 0600)
 	} else {
-		file, err = os.OpenFile(path.Join(directoryPath, filename), os.O_CREATE, 0400)
-	}
-	if err != nil {
-		return nil, err
+		file, _ = os.OpenFile(path.Join(directoryPath, filename), os.O_CREATE, 0400)
 	}
 
-	return file, err
+	return file
 }
 
 func new(directoryPath string, config []Config) (*BitCask, error) {
 	var opts Config
 	var file *os.File
-	var err error
 	var keydir Keydir
 	var keydirData []byte
 	pendingWrites = make(map[string][]byte)
@@ -85,18 +74,14 @@ func new(directoryPath string, config []Config) (*BitCask, error) {
 		opts = config[0]
 	}
 
-	file, err = newActiveFile(directoryPath, opts)
-	if err != nil {
-		return nil, err
-	}
+	file = newActiveFile(directoryPath, opts)
+	
 
-	keydirData, err = os.ReadFile(path.Join(directoryPath, "keydir.cask"))
+	keydirData, err := os.ReadFile(path.Join(directoryPath, "keydir.cask"))
 	if err != nil {
 		keydir = Keydir{}
 	} else {
-		if keydir, err = parseKeydirData(string(keydirData)); err != nil {
-			return nil, err
-		}
+		keydir = parseKeydirData(string(keydirData))
 	}
 
 	bc := &BitCask{
@@ -147,10 +132,7 @@ func (bc *BitCask) appendItemToActiveFile(item []byte) error {
 	var activeFile *os.File
 	var n int
 	if bc.cursor+len(item) > MaxFileSize {
-		activeFile, err = newActiveFile(bc.dirName, bc.config)
-		if err != nil {
-			return err
-		}
+		activeFile = newActiveFile(bc.dirName, bc.config)
 		bc.activeFile = activeFile
 		bc.cursor = 0
 	}

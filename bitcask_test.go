@@ -154,6 +154,28 @@ func TestGet(t *testing.T) {
         os.RemoveAll(testBitcaskPath)
     })
 
+    t.Run("read number of bytes less than size of value", func(t *testing.T) {
+        os.MkdirAll(testBitcaskPath, 0700)
+        file, _ := os.Create(testFilePath)
+
+        bc, _ := Open(testBitcaskPath)
+        file.Write(bc.makeItem([]byte("key"), []byte("value"), time.Now()))
+
+
+        bc.keydir["key"] = Record {
+            fileId:  testFilePath,
+            valueSize: 8,   // invalid value size
+            valuePosition:  int64(16 + len("key")),
+            timeStamp:  time.Now(),
+        }
+
+        _, err := bc.Get([]byte("key"))
+        want := fmt.Errorf("read only 5 bytes out of 8")
+
+        assertErrorMsg(t, err, want)
+        os.RemoveAll(testBitcaskPath)
+    })
+
     t.Run("invalid file id", func(t *testing.T) {
         os.MkdirAll(testBitcaskPath, 0700)
         file, _ := os.Create(testFilePath)
@@ -175,11 +197,6 @@ func TestGet(t *testing.T) {
         assertErrorMsg(t, err, want)
         os.RemoveAll(testBitcaskPath)
     })
-
-    
-	/* To-Do:
-              "Read files less than item size" test
-	*/
 }
 
 
