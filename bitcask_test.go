@@ -270,6 +270,7 @@ func TestListKeys(t *testing.T) {
         if len(got) != 0 {
             t.Errorf("length of keys list is %d, expected to get 0", got)
         }
+        os.RemoveAll(testBitcaskPath)
     })
 
     t.Run("list keys succesfully", func(t *testing.T) {
@@ -283,10 +284,9 @@ func TestListKeys(t *testing.T) {
         if !reflect.DeepEqual(got, want) {
             t.Errorf("got:\n%vwant:\n%v", got, want)
         }
+        os.RemoveAll(testBitcaskPath)
     })
 }
-
-
 
 
 
