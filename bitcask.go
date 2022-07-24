@@ -112,7 +112,7 @@ func (bc *BitCask) Put(key, value []byte) error {
 	return err
 }
 
-// Delete appens a special TombStone value, which will be removed
+// Delete appends a special TombStone value, which will be removed
 // on the next merge. The key is deleted from keydir.
 // returns err == ErrNullKeyOrValue if passed nil key
 // err == ErrHasNoWritePerms if calling process has no write perms.
@@ -162,7 +162,6 @@ func (bc *BitCask) Fold(fn func([]byte, []byte) []byte, acc []byte) []byte {
 }
 
 func (bc *BitCask) Merge() error {
-
 	return nil
 }
 
