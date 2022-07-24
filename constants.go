@@ -8,11 +8,11 @@ import (
 const (
 	TombStone                = "bitcask_tombstone"
 	keydirFileRecordSeprator = " "
-	keydirFileName           = "keydir.cask"
+	hintFileName           = "keydir.cask"
 	BitCaskFileExtension     = ".cask"
 	
-	MaxFileSize    = 2147483648
-	MaxPendingSize = 1024
+	MaxFileSize    = 1024
+	MaxPendingSize = 50
 
 	UserReadOnly      = os.FileMode(0400)
 	UserReadWriteExec = os.FileMode(0700)
@@ -28,7 +28,8 @@ var (
 
 var (
 	testBitcaskPath   = path.Join("bitcask")
-	tetsListKeyBitcaskPath   = path.Join("bitcaskList")
+	tetsListKeyBitcaskPath   = path.Join("bitcask_list")
+	testBitcaskMergePath   = path.Join("bitcask_merge")
 	testKeyDirPath    = path.Join("bitcask", "keydir.cask")
 	testNoOpenDirPath = path.Join("no_open_directory")
 	testFilePath      = path.Join("bitcask", "testfile.cask")

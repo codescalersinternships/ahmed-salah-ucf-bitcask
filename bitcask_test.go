@@ -202,6 +202,14 @@ func TestGet(t *testing.T) {
 }
 
 func TestPut(t *testing.T) {
+    t.Run("has no write permissions", func(t *testing.T) {
+        bc, _ := Open(testBitcaskPath)
+        err := bc.Put([]byte("key"), []byte("value"))
+
+        assertErrorMsg(t, err, ErrHasNoWritePerms)
+        os.RemoveAll(testBitcaskPath)
+    })
+
     t.Run("successful put", func(t *testing.T) {
         bc, _ := Open(testBitcaskPath, RWsyncConfig)
         bc.Put([]byte("name"), []byte("salah"))
@@ -245,6 +253,7 @@ func TestPut(t *testing.T) {
         {"nil value", []byte("name"), nil, ErrNullKeyOrValue},
     }
     for _, tt := range tests {
+        os.RemoveAll(testBitcaskPath)
         t.Run(tt.testName, func(t *testing.T) {
             bc, _ := Open(testBitcaskPath, RWsyncConfig)
             err := bc.Put(tt.key, tt.value)
@@ -254,13 +263,29 @@ func TestPut(t *testing.T) {
         })
     }
 
-    t.Run("has no write permissions", func(t *testing.T) {
-        bc, _ := Open(testBitcaskPath)
-        err := bc.Put([]byte("key"), []byte("value"))
-
-        assertErrorMsg(t, err, ErrHasNoWritePerms)
-        os.RemoveAll(testBitcaskPath)
-    })
+    var passMaxSizeTests = [] struct {
+        testName string
+        config Config
+    } {
+        {"pass MaxFileSize", RWsyncConfig},
+        {"pass MaxPendingSize", RWConfig},
+    }
+    for _, tt := range passMaxSizeTests {
+        t.Run(tt.testName, func(t *testing.T) {
+            os.RemoveAll(testBitcaskMergePath)
+            bc, _ := Open(testBitcaskMergePath, tt.config)
+            for i := 0; i < 100; i++ {
+                key := "key" + fmt.Sprintf("%d", i)
+                value := "value" + fmt.Sprintf("%d", i)
+                bc.Put([]byte(key), []byte(value))
+            }
+            
+            got, _ := bc.Get([]byte("key5"))
+            
+            assertEqualStrings(t, string(got), "value5")
+            os.RemoveAll(testBitcaskMergePath)
+        })
+    }
 }
 
 func TestDelete(t *testing.T) {
@@ -352,6 +377,41 @@ func TestFold(t *testing.T) {
     }
 
     os.RemoveAll(testBitcaskPath)
+}
+
+func TestMerge(t *testing.T) {
+    t.Run("has no write permissions", func(t *testing.T) {
+        bc , _ := Open(testBitcaskPath)
+        err := bc.Merge()
+
+        assertErrorMsg(t, err, ErrHasNoWritePerms)
+        os.RemoveAll(testBitcaskPath)
+    })
+
+    var tests = [] struct {
+        testName string
+        config Config
+    } {
+        {"merge files successfully", RWsyncConfig},
+        {"merge files with pendding writes", RWConfig},
+    }
+    for _, tt := range tests {
+        t.Run(tt.testName, func(t *testing.T) {
+            os.RemoveAll(testBitcaskMergePath)
+            bc, _ := Open(testBitcaskMergePath, tt.config)
+            for i := 0; i < 100; i++ {
+                key := "key" + fmt.Sprintf("%d", i)
+                value := "value" + fmt.Sprintf("%d", i)
+                bc.Put([]byte(key), []byte(value))
+            }
+            
+            bc.Merge()
+            got, _ := bc.Get([]byte("key5"))
+            
+            assertEqualStrings(t, string(got), "value5")
+            os.RemoveAll(testBitcaskMergePath)
+        })
+    }
 }
 
 func TestSync(t *testing.T) {

@@ -107,7 +107,7 @@ func (bc *BitCask) Put(key, value []byte) error {
 	} else {
 		item := bc.makeItem(key, value, bc.keydir[string(key)].timeStamp)
 		bc.updateKeydirRecord(key, value, bc.activeFile.Name(), int64(bc.cursor), time.Now())
-		bc.appendItemToFile(item, &bc.cursor, bc.activeFile)
+		bc.appendItemToFile(item, &bc.cursor, &bc.activeFile)
 	}
 	
 	return err
@@ -131,7 +131,7 @@ func (bc *BitCask) Delete(key []byte) error {
 	delete(bc.keydir, string(key))
 
 	item := bc.makeItem(key, []byte(TombStone), bc.keydir[string(key)].timeStamp)
-	bc.appendItemToFile(item, &bc.cursor, bc.activeFile)
+	bc.appendItemToFile(item, &bc.cursor, &bc.activeFile)
 
 	return nil
 }
@@ -158,6 +158,11 @@ func (bc *BitCask) Fold(fn func([]byte, []byte, any) any, acc any) any {
 	return acc
 }
 
+// Merge merges several data files within a Bitcask datastore into
+// a more compact form and deletes old files.
+// All pending writes are synced to disk before merge happens.
+// returns err == ErrHasNoWritePerms if the calling process has no
+// write permissions.
 func (bc *BitCask) Merge() error {
 	if !bc.config.writePermission {
 		return ErrHasNoWritePerms
@@ -174,10 +179,10 @@ func (bc *BitCask) Merge() error {
 			oldFilesSet[record.fileId] = member
 			tStamp := time.Now()
 			value, _ := bc.Get([]byte(key))
-			fileItem := bc.makeItem([]byte(key), value, tStamp)
 
 			bc.updateKeydirRecord([]byte(key), value, mergeFile.Name(), currentCursorPos, tStamp)
-			bc.appendItemToFile(fileItem, &currentCursorPos, mergeFile)
+			fileItem := bc.makeItem([]byte(key), value, tStamp)
+			bc.appendItemToFile(fileItem, &currentCursorPos, &mergeFile)
 		}
 	}
 
@@ -201,7 +206,7 @@ func (bc *BitCask) Sync() error {
 	for key := range pendingWrites {
 		item := bc.makeItem([]byte(key), pendingWrites[key], bc.keydir[string(key)].timeStamp)
 		bc.updateKeydirRecord([]byte(key), pendingWrites[key], bc.activeFile.Name(), int64(bc.cursor), time.Now())
-		bc.appendItemToFile(item, &bc.cursor, bc.activeFile)
+		bc.appendItemToFile(item, &bc.cursor, &bc.activeFile)
 		delete(pendingWrites, key)
 	}
 
@@ -211,10 +216,11 @@ func (bc *BitCask) Sync() error {
 func (bc *BitCask) Close() error {
 	if bc.config.writePermission {
 		bc.Sync()
-		bc.Merge()
 		bc.activeFile.Close()
+		bc.Merge()
+		// generateHintFiles()
 	} else {
-		os.Remove(path.Join(bc.dirName, keydirFileName))
+		os.Remove(path.Join(bc.dirName, hintFileName))
 	}
 	return nil
 }

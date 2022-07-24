@@ -30,7 +30,7 @@ func new(directoryPath string, config []Config) (*BitCask, error) {
 	}
 	
 
-	keydirData, err := os.ReadFile(path.Join(directoryPath, keydirFileName))
+	keydirData, err := os.ReadFile(path.Join(directoryPath, hintFileName))
 	if err != nil {
 		keydir = Keydir{}
 	} else {
@@ -134,15 +134,15 @@ func (bc *BitCask) updateKeydirRecord (key, value []byte, fileName string, curre
 	}
 }
 
-func (bc *BitCask) appendItemToFile(item []byte, currentCursorPos *int64, file *os.File) {
+func (bc *BitCask) appendItemToFile(item []byte, currentCursorPos *int64, file **os.File) {
 	if int64(len(item)) + (*currentCursorPos) > MaxFileSize {
-		file.Close()
+		(*file).Close()
 
-		file = newFile(bc.dirName)
+		*file = newFile(bc.dirName)
 		*currentCursorPos = 0
 	}
 
-	n, _ := file.Write(item)
+	n, _ := (*file).Write(item)
 	*currentCursorPos += int64(n)
 }
 
