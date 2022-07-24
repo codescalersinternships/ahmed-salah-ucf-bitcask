@@ -62,13 +62,11 @@ func (bc *BitCask) Get(key []byte) ([]byte, error) {
 	var n int
 	var record Record
 
-	if err := bc.isExist(key); err != nil {
-		return nil, err
-	}
-
 	if value, ok := pendingWrites[string(key)]; ok {
 		return value, nil
 
+	} else if err := bc.isExist(key); err != nil {
+		return nil, err
 	} else {
 		record = bc.keydir[string(key)]
 		data = make([]byte, record.valueSize)
@@ -98,9 +96,6 @@ func (bc *BitCask) Put(key, value []byte) error {
 		return ErrHasNoWritePerms
 	}
 
-
-	bc.updateKeydir(key, value, time.Now())
-
 	var err error
 	if !bc.config.syncOnPut {
 		if _, ok := pendingWrites[string(key)]; ok {
@@ -117,6 +112,10 @@ func (bc *BitCask) Put(key, value []byte) error {
 	return err
 }
 
+// Delete appens a special TombStone value, which will be removed
+// on the next merge. The key is deleted from keydir.
+// returns err == ErrNullKeyOrValue if passed nil key
+// err == ErrHasNoWritePerms if calling process has no write perms.
 func (bc *BitCask) Delete(key []byte) error {
 	if key == nil {
 		return ErrNullKeyOrValue
@@ -126,21 +125,22 @@ func (bc *BitCask) Delete(key []byte) error {
 		return ErrHasNoWritePerms
 	}
 
+	delete(pendingWrites, string(key))
+
 	delete(bc.keydir, string(key))
 
-	var err error
-	if !bc.config.syncOnPut {
-		err = bc.loadToPendingWrites(key, []byte(TombStone))
-	} else {
-		bc.appendItem(key, []byte(TombStone))
-	}
+	bc.appendItem(key, []byte(TombStone))
 
-	return err
+	return nil
 }
 
 // ListKeys lists all the keys in a Bitcask store.
 func (bc *BitCask) ListKeys() [][]byte {
 	var result [][]byte
+
+	for key := range pendingWrites {
+		result = append(result, []byte(key))
+	}
 
 	for key := range bc.keydir {
 		result = append(result, []byte(key))
@@ -162,6 +162,7 @@ func (bc *BitCask) Fold(fn func([]byte, []byte) []byte, acc []byte) []byte {
 }
 
 func (bc *BitCask) Merge() error {
+
 	return nil
 }
 

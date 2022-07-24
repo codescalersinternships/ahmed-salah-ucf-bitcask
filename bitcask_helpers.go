@@ -106,6 +106,10 @@ func (bc *BitCask) loadToPendingWrites(key, value []byte) error {
 }
 
 func (bc *BitCask) appendItem(key, value []byte) {
+
+	if string(value) != TombStone {
+		bc.updateKeydir(key, value, time.Now())
+	}
 	
 	item := bc.makeItem(key, value, bc.keydir[string(key)].timeStamp)
 
