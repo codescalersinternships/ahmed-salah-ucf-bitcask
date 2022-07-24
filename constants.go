@@ -14,7 +14,7 @@ const (
 	MaxFileSize    = 1024
 	MaxPendingSize = 50
 
-	UserReadOnly      = os.FileMode(0400)
+	// UserReadOnly      = os.FileMode(0600)
 	UserReadWriteExec = os.FileMode(0700)
 	NoPermissions     = os.FileMode(0000)
 )

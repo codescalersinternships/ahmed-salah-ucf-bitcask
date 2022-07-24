@@ -83,7 +83,7 @@ func newFile(directoryPath string) (*os.File){
 
 	file, _ = os.OpenFile(path.Join(directoryPath, filename), 
 							os.O_CREATE | os.O_WRONLY | os.O_APPEND, 
-							UserReadOnly)
+							0600)
 
 	return file
 }
@@ -136,7 +136,7 @@ func (bc *BitCask) updateKeydirRecord (key, value []byte, fileName string, curre
 
 func (bc *BitCask) appendItemToFile(item []byte, currentCursorPos *int64, file **os.File) {
 	if int64(len(item)) + (*currentCursorPos) > MaxFileSize {
-		// (*file).Close()
+		(*file).Close()
 
 		*file = newFile(bc.dirName)
 		*currentCursorPos = 0
