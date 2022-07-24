@@ -3,8 +3,10 @@
 package bitcask
 
 import (
+	"bytes"
 	"fmt"
 	"os"
+	"sort"
 	"time"
 )
 
@@ -96,6 +98,9 @@ func (bc *BitCask) Put(key, value []byte) error {
 		return ErrHasNoWritePerms
 	}
 
+
+	bc.updateKeydir(key, value, time.Now())
+
 	var err error
 	if !bc.config.syncOnPut {
 		if _, ok := pendingWrites[string(key)]; ok {
@@ -120,13 +125,13 @@ func (bc *BitCask) Delete(key []byte) error {
 func (bc *BitCask) ListKeys() [][]byte {
 	var result [][]byte
 
-	for key := range pendingWrites {
-		result = append(result, []byte(key))
-	}
-
 	for key := range bc.keydir {
 		result = append(result, []byte(key))
 	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return bytes.Compare(result[i], result[j]) == -1
+	})
 
 	return result
 }

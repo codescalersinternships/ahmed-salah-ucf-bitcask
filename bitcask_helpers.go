@@ -98,9 +98,6 @@ func (bc *BitCask) isExist(key []byte) error {
 func (bc *BitCask) loadToPendingWrites(key, value []byte) error {
 	var err error
 
-	tStamp := time.Now()
-	bc.updateKeydir(key, value, tStamp)
-
 	if len(pendingWrites) > MaxPendingSize {
 		err = bc.Sync()
 	}
@@ -109,13 +106,10 @@ func (bc *BitCask) loadToPendingWrites(key, value []byte) error {
 }
 
 func (bc *BitCask) appendItem(key, value []byte) error {
-
-	tStamp := time.Now()
-	bc.updateKeydir(key, value, tStamp)
 	
-	item := bc.makeItem(key, value, tStamp)
-	bc.appendItemToActiveFile(item)
+	item := bc.makeItem(key, value, bc.keydir[string(key)].timeStamp)
 
+	bc.appendItemToActiveFile(item)
 
 	return nil
 }
