@@ -272,8 +272,8 @@ func TestPut(t *testing.T) {
     }
     for _, tt := range passMaxSizeTests {
         t.Run(tt.testName, func(t *testing.T) {
-            os.RemoveAll(testBitcaskMergePath)
-            bc, _ := Open(testBitcaskMergePath, tt.config)
+            os.RemoveAll(testBitcaskPath)
+            bc, _ := Open(testBitcaskPath, tt.config)
             for i := 0; i < 100; i++ {
                 key := "key" + fmt.Sprintf("%d", i)
                 value := "value" + fmt.Sprintf("%d", i)
@@ -283,7 +283,7 @@ func TestPut(t *testing.T) {
             got, _ := bc.Get([]byte("key5"))
             
             assertEqualStrings(t, string(got), "value5")
-            os.RemoveAll(testBitcaskMergePath)
+            os.RemoveAll(testBitcaskPath)
         })
     }
 }
