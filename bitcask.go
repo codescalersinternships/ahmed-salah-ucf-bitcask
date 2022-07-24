@@ -116,8 +116,19 @@ func (bc *BitCask) Delete(key []byte) error {
 	return nil
 }
 
-func (bc *BitCask) ListKeys() []string {
-	return nil
+// ListKeys lists all the keys in a Bitcask store.
+func (bc *BitCask) ListKeys() [][]byte {
+	var result [][]byte
+
+	for key := range pendingWrites {
+		result = append(result, []byte(key))
+	}
+
+	for key := range bc.keydir {
+		result = append(result, []byte(key))
+	}
+
+	return result
 }
 
 func (bc *BitCask) Fold(fn func([]byte, []byte), acc []byte) []byte {
@@ -128,7 +139,26 @@ func (bc *BitCask) Merge() error {
 	return nil
 }
 
+// Sync forces any pending writes to sync to disk.
+// It returns err ==  ErrHasNoWritePerms if the calling process
+// has no write permissions.
+// After the append completes, an in-memory structure called
+// ”keydir” is updated.
+// When the active file meets a size threshold MaxFileSize,
+// it will be closed and a new active file will be created.
 func (bc *BitCask) Sync() error {
+	if !bc.config.writePermission {
+		return ErrHasNoWritePerms
+	}
+
+	for key := range pendingWrites {
+		err := bc.appendItem([]byte(key), pendingWrites[key])
+		if err != nil {
+			return err
+		}
+		delete(pendingWrites, key)
+	}
+
 	return nil
 }
 

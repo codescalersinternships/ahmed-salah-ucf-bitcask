@@ -99,9 +99,6 @@ func (bc *BitCask) loadToPendingWrites(key, value []byte) error {
 	var err error
 	if len(pendingWrites) > MaxPendingSize {
 		err = bc.Sync()
-		for k := range pendingWrites {
-			delete(pendingWrites, k)
-		}
 		pendingWrites[string(key)] = value
 	}
 	return err
@@ -147,6 +144,8 @@ func (bc *BitCask) appendItemToActiveFile(item []byte) error {
 	var activeFile *os.File
 	var n int
 	if bc.cursor+len(item) > MaxFileSize {
+		bc.activeFile.Close()
+		
 		activeFile = newActiveFile(bc.dirName, bc.config)
 		bc.activeFile = activeFile
 		bc.cursor = 0
