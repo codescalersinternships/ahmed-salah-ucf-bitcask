@@ -350,6 +350,8 @@ func TestFold(t *testing.T) {
     if got != want {
         t.Errorf("got:\n%d\nwant:\n%d\n", got, want)
     }
+
+    os.RemoveAll(testBitcaskPath)
 }
 
 func TestSync(t *testing.T) {
