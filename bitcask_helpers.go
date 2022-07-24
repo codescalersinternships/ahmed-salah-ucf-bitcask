@@ -100,7 +100,7 @@ func (bc *BitCask) loadToPendingWrites(key, value []byte) error {
 
 	tStamp := time.Now()
 	bc.updateKeydir(key, value, tStamp)
-	
+
 	if len(pendingWrites) > MaxPendingSize {
 		err = bc.Sync()
 	}
@@ -114,10 +114,7 @@ func (bc *BitCask) appendItem(key, value []byte) error {
 	bc.updateKeydir(key, value, tStamp)
 	
 	item := bc.makeItem(key, value, tStamp)
-	err := bc.appendItemToActiveFile(item)
-	if err != nil {
-		return err
-	}
+	bc.appendItemToActiveFile(item)
 
 
 	return nil
@@ -143,8 +140,7 @@ func (bc *BitCask) makeItem(key, value []byte, timeStamp time.Time) []byte {
 	return item
 }
 
-func (bc *BitCask) appendItemToActiveFile(item []byte) error {
-	var err error
+func (bc *BitCask) appendItemToActiveFile(item []byte) {
 	var activeFile *os.File
 	var n int
 	if bc.cursor+len(item) > MaxFileSize {
@@ -155,13 +151,9 @@ func (bc *BitCask) appendItemToActiveFile(item []byte) error {
 		bc.cursor = 0
 	}
 
-	n, err = bc.activeFile.Write(item)
-	if err != nil {
-		return err
-	}
+	n, _ = bc.activeFile.Write(item)
+	
 	bc.cursor += n
-
-	return nil
 }
 
 func (bc *BitCask) updateKeydir (key, value []byte, tStamp time.Time) {

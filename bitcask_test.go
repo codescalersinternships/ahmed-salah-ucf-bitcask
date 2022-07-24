@@ -220,6 +220,18 @@ func TestPut(t *testing.T) {
         os.RemoveAll(testBitcaskPath)
     })
 
+    t.Run("syncOnPut disabled and key exist in pendings", func(t *testing.T) {
+        bc, _ := Open(testBitcaskPath, RWConfig)
+        bc.Put([]byte("name"), []byte("salah"))
+
+        bc.Put([]byte("name"), []byte("ahmed"))
+        
+        got, _ := bc.Get([]byte("name"))
+
+        assertEqualStrings(t, string(got), string("ahmed"))
+        os.RemoveAll(testBitcaskPath)
+    })
+
     var tests = [] struct {
         testName string
         key []byte
