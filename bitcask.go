@@ -106,7 +106,8 @@ func (bc *BitCask) Put(key, value []byte) error {
 
 	} else {
 		item := bc.makeItem(key, value, bc.keydir[string(key)].timeStamp)
-		bc.appendItem(key, value, item)
+		bc.updateKeydirRecord(key, value, bc.activeFile.Name(), int64(bc.cursor), time.Now())
+		bc.appendItemToFile(item, &bc.cursor, bc.activeFile)
 	}
 	
 	return err
@@ -130,7 +131,7 @@ func (bc *BitCask) Delete(key []byte) error {
 	delete(bc.keydir, string(key))
 
 	item := bc.makeItem(key, []byte(TombStone), bc.keydir[string(key)].timeStamp)
-	bc.appendItem(key, []byte(TombStone), item)
+	bc.appendItemToFile(item, &bc.cursor, bc.activeFile)
 
 	return nil
 }
@@ -161,9 +162,10 @@ func (bc *BitCask) Merge() error {
 	if !bc.config.writePermission {
 		return ErrHasNoWritePerms
 	}
+	
 	bc.Sync()
-	var currentCursorPos int64 = 0
 
+	var currentCursorPos int64 = 0
 	oldFilesSet := make(map[string]void)
 	mergeFile := newFile(bc.dirName)
 
@@ -175,16 +177,10 @@ func (bc *BitCask) Merge() error {
 			fileItem := bc.makeItem([]byte(key), value, tStamp)
 
 			bc.updateKeydirRecord([]byte(key), value, mergeFile.Name(), currentCursorPos, tStamp)
-
-			if int64(len(fileItem)) + currentCursorPos > MaxFileSize {
-				mergeFile.Close()
-				mergeFile = newFile(bc.dirName)
-				currentCursorPos = 0
-			}
-			n, _ := mergeFile.Write(fileItem)
-			currentCursorPos += int64(n)
+			bc.appendItemToFile(fileItem, &currentCursorPos, mergeFile)
 		}
 	}
+
 	bc.deleteOldFiles(oldFilesSet)
 
 	return nil
@@ -204,7 +200,8 @@ func (bc *BitCask) Sync() error {
 
 	for key := range pendingWrites {
 		item := bc.makeItem([]byte(key), pendingWrites[key], bc.keydir[string(key)].timeStamp)
-		bc.appendItem([]byte(key), pendingWrites[key], item)
+		bc.updateKeydirRecord([]byte(key), pendingWrites[key], bc.activeFile.Name(), int64(bc.cursor), time.Now())
+		bc.appendItemToFile(item, &bc.cursor, bc.activeFile)
 		delete(pendingWrites, key)
 	}
 

@@ -105,15 +105,6 @@ func (bc *BitCask) loadToPendingWrites(key, value []byte) error {
 	return err
 }
 
-func (bc *BitCask) appendItem(key, value, item []byte) {
-
-	if string(value) != TombStone {
-		bc.updateKeydirRecord(key, value, bc.activeFile.Name(), int64(bc.cursor), time.Now())
-	}
-
-	bc.appendItemToActiveFile(item)
-}
-
 func (bc *BitCask) makeItem(key, value []byte, timeStamp time.Time) []byte {
 	tStamp := uint32(timeStamp.Unix())
 	keySize := uint32(len(key))
@@ -134,24 +125,6 @@ func (bc *BitCask) makeItem(key, value []byte, timeStamp time.Time) []byte {
 	return item
 }
 
-func (bc *BitCask) appendItemToActiveFile(item []byte) {
-	var activeFile *os.File
-	var n int
-	if bc.cursor+int64(len(item)) > MaxFileSize {
-		bc.activeFile.Close()
-		
-		activeFile = newFile(bc.dirName)
-		bc.activeFile = activeFile
-		bc.cursor = 0
-	}
-
-	n, _ = bc.activeFile.Write(item)
-	
-	bc.cursor += int64(n)
-}
-
-
-
 func (bc *BitCask) updateKeydirRecord (key, value []byte, fileName string, currentCursorPos int64, tStamp time.Time) {
 	bc.keydir[string(key)] = Record {
 		fileId: fileName,
@@ -159,6 +132,18 @@ func (bc *BitCask) updateKeydirRecord (key, value []byte, fileName string, curre
 		valuePosition: int64(currentCursorPos + 16 + int64(len(key))),
 		timeStamp: tStamp,
 	}
+}
+
+func (bc *BitCask) appendItemToFile(item []byte, currentCursorPos *int64, file *os.File) {
+	if int64(len(item)) + (*currentCursorPos) > MaxFileSize {
+		file.Close()
+
+		file = newFile(bc.dirName)
+		*currentCursorPos = 0
+	}
+
+	n, _ := file.Write(item)
+	*currentCursorPos += int64(n)
 }
 
 func (bc *BitCask) deleteOldFiles(oldFiles map[string] void) {
