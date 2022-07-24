@@ -264,7 +264,7 @@ func TestPut(t *testing.T) {
 
 func TestListKeys(t *testing.T) {
     t.Run("empty bitcask", func(t *testing.T) {
-        bc, _ := Open(testBitcaskPath, RWConfig)
+        bc, _ := Open(testBitcaskPath)
         got := bc.ListKeys()
 
         if len(got) != 0 {
