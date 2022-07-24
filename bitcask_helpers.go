@@ -105,13 +105,11 @@ func (bc *BitCask) loadToPendingWrites(key, value []byte) error {
 	return err
 }
 
-func (bc *BitCask) appendItem(key, value []byte) error {
+func (bc *BitCask) appendItem(key, value []byte) {
 	
 	item := bc.makeItem(key, value, bc.keydir[string(key)].timeStamp)
 
 	bc.appendItemToActiveFile(item)
-
-	return nil
 }
 
 func (bc *BitCask) makeItem(key, value []byte, timeStamp time.Time) []byte {

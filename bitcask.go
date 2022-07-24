@@ -111,7 +111,7 @@ func (bc *BitCask) Put(key, value []byte) error {
 		}
 
 	} else {
-		err = bc.appendItem(key, value)
+		bc.appendItem(key, value)
 	}
 	
 	return err
@@ -157,10 +157,7 @@ func (bc *BitCask) Sync() error {
 	}
 
 	for key := range pendingWrites {
-		err := bc.appendItem([]byte(key), pendingWrites[key])
-		if err != nil {
-			return err
-		}
+		bc.appendItem([]byte(key), pendingWrites[key])
 		delete(pendingWrites, key)
 	}
 

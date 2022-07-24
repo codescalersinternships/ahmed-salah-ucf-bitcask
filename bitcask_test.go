@@ -263,15 +263,15 @@ func TestPut(t *testing.T) {
 }
 
 func TestListKeys(t *testing.T) {
-    t.Run("empty bitcask", func(t *testing.T) {
-        bc, _ := Open(testBitcaskPath)
-        got := bc.ListKeys()
+    // t.Run("empty bitcask", func(t *testing.T) {
+    //     bc, _ := Open(testBitcaskPath)
+    //     got := bc.ListKeys()
 
-        if len(got) != 0 {
-            t.Errorf("length of keys list is %d, expected to get 0", len(got))
-        }
-        os.RemoveAll(testBitcaskPath)
-    })
+    //     if len(got) != 0 {
+    //         t.Errorf("length of keys list is %d, expected to get 0", len(got))
+    //     }
+    //     os.RemoveAll(testBitcaskPath)
+    // })
 
     t.Run("list keys succesfully", func(t *testing.T) {
         bc, _ := Open(testBitcaskPath, RWConfig)
@@ -289,7 +289,23 @@ func TestListKeys(t *testing.T) {
 }
 
 func TestSync(t *testing.T) {
+    t.Run("has no write permissions", func(t *testing.T) {
+        bc, _ := Open(testBitcaskPath)
+        err := bc.Sync()
 
+        assertErrorMsg(t, err, ErrHasNoWritePerms)
+        os.RemoveAll(testBitcaskPath)
+    })
+
+    t.Run("flush pending writes successfuly", func(t *testing.T) {
+        bc, _ := Open(testBitcaskPath, RWConfig)
+        bc.Put([]byte("name"), []byte("salah"))
+        bc.Sync()
+        got, _ := bc.Get([]byte("name"))
+
+        assertEqualStrings(t, string(got), string("salah"))
+        os.RemoveAll(testBitcaskPath)
+    })
 }
 
 
