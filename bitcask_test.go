@@ -207,6 +207,45 @@ func TestPut(t *testing.T) {
         got, _ := bc.Get([]byte("name"))
 
         assertEqualStrings(t, string(got), string("salah"))
+        os.RemoveAll(testBitcaskPath)
+    })
+
+    t.Run("syncOnPut disabled", func(t *testing.T) {
+        bc, _ := Open(testBitcaskPath, RWConfig)
+        bc.Put([]byte("name"), []byte("salah"))
+        
+        got, _ := bc.Get([]byte("name"))
+
+        assertEqualStrings(t, string(got), string("salah"))
+        os.RemoveAll(testBitcaskPath)
+    })
+
+    var tests = [] struct {
+        testName string
+        key []byte
+        value []byte
+        testErr error
+
+    } {
+        {"nil key", nil, []byte("salah"), ErrNullKeyOrValue},
+        {"nil value", []byte("name"), nil, ErrNullKeyOrValue},
+    }
+    for _, tt := range tests {
+        t.Run(tt.testName, func(t *testing.T) {
+            bc, _ := Open(testBitcaskPath, RWsyncConfig)
+            err := bc.Put(tt.key, tt.value)
+
+            assertErrorMsg(t, err, tt.testErr)
+            os.RemoveAll(testBitcaskPath)
+        })
+    }
+
+    t.Run("has no write permissions", func(t *testing.T) {
+        bc, _ := Open(testBitcaskPath)
+        err := bc.Put([]byte("key"), []byte("value"))
+
+        assertErrorMsg(t, err, ErrHasNoWritePerms)
+        os.RemoveAll(testBitcaskPath)
     })
 }
 
