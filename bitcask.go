@@ -3,10 +3,8 @@
 package bitcask
 
 import (
-	"bytes"
 	"fmt"
 	"os"
-	"sort"
 	"time"
 )
 
@@ -143,10 +141,6 @@ func (bc *BitCask) ListKeys() [][]byte {
 	for key := range bc.keydir {
 		result = append(result, []byte(key))
 	}
-
-	sort.Slice(result, func(i, j int) bool {
-		return bytes.Compare(result[i], result[j]) == -1
-	})
 
 	return result
 }

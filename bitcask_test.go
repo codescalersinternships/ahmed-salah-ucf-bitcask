@@ -309,7 +309,7 @@ func TestDelete(t *testing.T) {
 func TestListKeys(t *testing.T) {
     t.Run("empty bitcask", func(t *testing.T) {
         os.RemoveAll(testBitcaskPath)
-        bc, _ := Open(testBitcaskPath)
+        bc, _ := Open(testBitcaskPath, RWsyncConfig)
         got := bc.ListKeys()
 
         if len(got) != 0 {
@@ -321,11 +321,10 @@ func TestListKeys(t *testing.T) {
     t.Run("list keys succesfully", func(t *testing.T) {
         os.RemoveAll(testBitcaskPath)
         bc, _ := Open(testBitcaskPath, RWConfig)
-        bc.Put([]byte("key"), []byte("value"))
         bc.Put([]byte("name"), []byte("salah"))
 
         got := bc.ListKeys()
-        want := [][]byte {[]byte("key"), []byte("name")}
+        want := [][]byte {[]byte("name")}
 
         if !reflect.DeepEqual(got, want) {
             t.Errorf("got:\n%v\nwant:\n%v", got, want)
