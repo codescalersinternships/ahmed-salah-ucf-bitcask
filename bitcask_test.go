@@ -199,6 +199,17 @@ func TestGet(t *testing.T) {
     })
 }
 
+func TestPut(t *testing.T) {
+    t.Run("successful put", func(t *testing.T) {
+        bc, _ := Open(testBitcaskPath, RWsyncConfig)
+        bc.Put([]byte("name"), []byte("salah"))
+        
+        got, _ := bc.Get([]byte("name"))
+
+        assertEqualStrings(t, string(got), string("salah"))
+    })
+}
+
 
 
 func assertEqualStrings(t testing.TB, got, want string) {

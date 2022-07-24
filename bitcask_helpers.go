@@ -82,7 +82,7 @@ func newActiveFile(directoryPath string, config Config) (*os.File){
 	filename := fmt.Sprintf("%d" + BitCaskFileExtension, time.Now().UnixMilli())
 
 	file, _ = os.OpenFile(path.Join(directoryPath, filename), 
-							os.O_CREATE | os.O_WRONLY | os.O_APPEND, 
+							os.O_CREATE | os.O_RDWR | os.O_APPEND, 
 							UserReadOnly)
 
 	return file
@@ -99,8 +99,8 @@ func (bc *BitCask) loadToPendingWrites(key, value []byte) error {
 	var err error
 	if len(pendingWrites) > MaxPendingSize {
 		err = bc.Sync()
-		pendingWrites[string(key)] = value
 	}
+	pendingWrites[string(key)] = value
 	return err
 }
 
@@ -109,12 +109,13 @@ func (bc *BitCask) appendItem(key, value []byte) error {
 	tStamp := time.Now()
 	item := bc.makeItem(key, value, tStamp)
 	
+	bc.updateKeydir(key, value, tStamp)
+
 	err := bc.appendItemToActiveFile(item)
 	if err != nil {
 		return err
 	}
 
-	bc.updateKeydir(key, value, tStamp)
 
 	return nil
 }
