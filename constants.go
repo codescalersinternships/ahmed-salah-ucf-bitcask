@@ -33,3 +33,6 @@ var (
 	testNoOpenDirPath = path.Join("no_open_directory")
 	testFilePath      = path.Join("bitcask", "testfile.cask")
 )
+
+type void struct{}
+var member void

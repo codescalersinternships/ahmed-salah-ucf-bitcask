@@ -5,6 +5,7 @@ package bitcask
 import (
 	"fmt"
 	"os"
+	"path"
 	"time"
 )
 
@@ -28,7 +29,7 @@ type Config struct {
 
 type BitCask struct {
 	activeFile *os.File
-	cursor int
+	cursor int64
 	dirName string
 	keydir Keydir
 	config Config
@@ -155,6 +156,43 @@ func (bc *BitCask) Fold(fn func([]byte, []byte, any) any, acc any) any {
 }
 
 func (bc *BitCask) Merge() error {
+	if !bc.config.writePermission {
+		return ErrHasNoWritePerms
+	}
+	bc.Sync()
+	var currentCursor int64 = 0
+
+	oldFiles := make(map[string]void)
+	mergeFile := newFile(bc.dirName)
+
+	for key, record := range bc.keydir {
+		if record.fileId != bc.activeFile.Name() {
+			oldFiles[record.fileId] = member
+			tStamp := time.Now()
+			value, _ := bc.Get([]byte(key))
+			fileItem := bc.makeItem([]byte(key), value, tStamp)
+
+			bc.updateKeydirRecord([]byte(key), value, mergeFile.Name(), currentCursor, tStamp)
+			bc.keydir[key] = Record{
+				fileId: mergeFile.Name(),
+				valueSize: len(value),
+				valuePosition: int64(currentCursor + 16 + int64(len(key))),
+				timeStamp: tStamp,
+			}
+
+			if int64(len(fileItem)) + currentCursor > MaxFileSize {
+				mergeFile.Close()
+				mergeFile = newFile(bc.dirName)
+				currentCursor = 0
+			}
+			n, _ := mergeFile.Write(fileItem)
+			currentCursor += int64(n)
+		}
+	}
+	for oldFile := range oldFiles {
+		os.Remove(path.Join(bc.dirName, oldFile))
+	}
+
 	return nil
 }
 
@@ -179,5 +217,12 @@ func (bc *BitCask) Sync() error {
 }
 
 func (bc *BitCask) Close() error {
+	if bc.config.writePermission {
+		bc.Sync()
+		bc.Merge()
+		bc.activeFile.Close()
+	} else {
+		os.Remove(path.Join(bc.dirName, keydirFileName))
+	}
 	return nil
 }

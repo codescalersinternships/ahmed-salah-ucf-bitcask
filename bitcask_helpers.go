@@ -26,7 +26,7 @@ func new(directoryPath string, config []Config) (*BitCask, error) {
 	}
 
 	if opts.writePermission {
-		file = newActiveFile(directoryPath, opts)
+		file = newFile(directoryPath)
 	}
 	
 
@@ -77,7 +77,7 @@ func parseKeydirData(keydirData string) Keydir {
 	return keydir
 }
 
-func newActiveFile(directoryPath string, config Config) (*os.File){
+func newFile(directoryPath string) (*os.File){
 	var file *os.File
 	filename := fmt.Sprintf("%d" + BitCaskFileExtension, time.Now().UnixMilli())
 
@@ -108,7 +108,7 @@ func (bc *BitCask) loadToPendingWrites(key, value []byte) error {
 func (bc *BitCask) appendItem(key, value []byte) {
 
 	if string(value) != TombStone {
-		bc.updateKeydir(key, value, time.Now())
+		bc.updateKeydirRecord(key, value, bc.activeFile.Name(), int64(bc.cursor), time.Now())
 	}
 	
 	item := bc.makeItem(key, value, bc.keydir[string(key)].timeStamp)
@@ -139,24 +139,24 @@ func (bc *BitCask) makeItem(key, value []byte, timeStamp time.Time) []byte {
 func (bc *BitCask) appendItemToActiveFile(item []byte) {
 	var activeFile *os.File
 	var n int
-	if bc.cursor+len(item) > MaxFileSize {
+	if bc.cursor+int64(len(item)) > MaxFileSize {
 		bc.activeFile.Close()
 		
-		activeFile = newActiveFile(bc.dirName, bc.config)
+		activeFile = newFile(bc.dirName)
 		bc.activeFile = activeFile
 		bc.cursor = 0
 	}
 
 	n, _ = bc.activeFile.Write(item)
 	
-	bc.cursor += n
+	bc.cursor += int64(n)
 }
 
-func (bc *BitCask) updateKeydir (key, value []byte, tStamp time.Time) {
+func (bc *BitCask) updateKeydirRecord (key, value []byte, fileName string, currentCursorPos int64, tStamp time.Time) {
 	bc.keydir[string(key)] = Record {
-		fileId: bc.activeFile.Name(),
+		fileId: fileName,
 		valueSize: len(value),
-		valuePosition: int64(bc.cursor + 16 + len(key)),
+		valuePosition: int64(currentCursorPos + 16 + int64(len(key))),
 		timeStamp: tStamp,
 	}
 }
