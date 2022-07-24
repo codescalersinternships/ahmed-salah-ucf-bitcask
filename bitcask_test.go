@@ -399,7 +399,7 @@ func TestMerge(t *testing.T) {
         t.Run(tt.testName, func(t *testing.T) {
             os.RemoveAll(testBitcaskMergePath)
             bc, _ := Open(testBitcaskMergePath, tt.config)
-            for i := 0; i < 25; i++ {
+            for i := 0; i < 100; i++ {
                 key := "key" + fmt.Sprintf("%d", i)
                 value := "value" + fmt.Sprintf("%d", i)
                 bc.Put([]byte(key), []byte(value))
