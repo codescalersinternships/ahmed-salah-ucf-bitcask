@@ -307,15 +307,16 @@ func TestDelete(t *testing.T) {
 }
 
 func TestListKeys(t *testing.T) {
-    // t.Run("empty bitcask", func(t *testing.T) {
-    //     bc, _ := Open(testBitcaskPath)
-    //     got := bc.ListKeys()
+    t.Run("empty bitcask", func(t *testing.T) {
+        os.RemoveAll(testBitcaskPath)
+        bc, _ := Open(testBitcaskPath)
+        got := bc.ListKeys()
 
-    //     if len(got) != 0 {
-    //         t.Errorf("length of keys list is %d, expected to get 0", len(got))
-    //     }
-    //     os.RemoveAll(testBitcaskPath)
-    // })
+        if len(got) != 0 {
+            t.Errorf("length of keys list is %d, expected to get 0", len(got))
+        }
+        os.RemoveAll(testBitcaskPath)
+    })
 
     t.Run("list keys succesfully", func(t *testing.T) {
         os.RemoveAll(testBitcaskPath)
