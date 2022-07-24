@@ -98,7 +98,7 @@ func (bc *BitCask) isExist(key []byte) error {
 func (bc *BitCask) loadToPendingWrites(key, value []byte) error {
 	var err error
 
-	if len(pendingWrites) > MaxPendingSize {
+	if int64(len(pendingWrites)) > MaxPendingSize {
 		err = bc.Sync()
 	}
 	pendingWrites[string(key)] = value

@@ -11,8 +11,8 @@ const (
 	hintFileName           = "keydir.cask"
 	BitCaskFileExtension     = ".cask"
 	
-	MaxFileSize    = 1024
-	MaxPendingSize = 90
+	MaxFileSize int64    = 1024
+	MaxPendingSize int64 = 90
 
 	// UserReadOnly      = os.FileMode(0600)
 	UserReadWriteExec = os.FileMode(0700)
