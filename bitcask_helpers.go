@@ -12,25 +12,18 @@ import (
 	"time"
 )
 
-func new(directoryPath string, config []Config) (*BitCask, error) {
-	var opts Config
+func new(directoryPath string, config Config, lock string) (*BitCask, error) {
 	var file *os.File
 	var keydir Keydir
 	var keydirData []byte
 	pendingWrites = make(map[string][]byte)
 
-	if config == nil {
-		opts = DefaultConfig
-	} else {
-		opts = config[0]
-	}
-
-	if opts.writePermission {
+	if config.writePermission {
 		file = newFile(directoryPath)
 	}
 	
 
-	keydirData, err := os.ReadFile(path.Join(directoryPath, hintFileName))
+	keydirData, err := os.ReadFile(path.Join(directoryPath, keydirFileName))
 	if err != nil {
 		keydir = Keydir{}
 	} else {
@@ -39,13 +32,27 @@ func new(directoryPath string, config []Config) (*BitCask, error) {
 
 	bc := &BitCask{
 		activeFile: file,
+		lock: lock,
 		cursor: 0,
 		dirName: directoryPath,
 		keydir: keydir,
-		config: opts,
+		config: config,
 	}
 
 	return bc, err
+}
+
+func (bc *BitCask) buildKeydirFile() {
+	keyDirFile, _ := os.Create(path.Join(bc.dirName, keydirFileName))
+
+	for key, record := range bc.keydir {
+		valueSize := strconv.Itoa(record.valueSize)
+		valuePos := strconv.Itoa(int(record.valuePosition))
+		t := record.timeStamp.Format(time.RFC3339)
+
+		line := key + " " + valueSize + " " + valuePos + t
+		fmt.Fprintln(keyDirFile, line)
+	}
 }
 
 func parseKeydirData(keydirData string) Keydir {
@@ -154,3 +161,17 @@ func (bc *BitCask) deleteOldFiles(oldFiles map[string] void) {
 	}
 }
 
+func checkLock(dirName string) processAccess {
+	bitcaskDirectory, _ := os.Open(dirName)
+	files, _ := bitcaskDirectory.Readdir(0)
+
+	for _, fileInfo := range files {
+		if strings.HasPrefix(fileInfo.Name(), readLock) {
+			return reader
+		} else if strings.HasPrefix(fileInfo.Name(), writeLock) {
+			return writer
+		}
+	}
+
+	return noProcess
+}

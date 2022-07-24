@@ -8,7 +8,7 @@ import (
 const (
 	TombStone                = "bitcask_tombstone"
 	keydirFileRecordSeprator = " "
-	hintFileName           = "keydir.cask"
+	keydirFileName           = "keydir.cask"
 	BitCaskFileExtension     = ".cask"
 	
 	MaxFileSize int64    = 1024
@@ -37,3 +37,14 @@ var (
 
 type void struct{}
 var member void
+
+type processAccess int
+
+const (
+	reader      processAccess = 0
+    writer      processAccess = 1
+    noProcess   processAccess = 2
+
+	readLock = ".readlock"
+    writeLock = ".writelock"
+)

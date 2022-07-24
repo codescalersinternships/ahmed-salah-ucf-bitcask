@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strconv"
 	"time"
 )
 
@@ -29,7 +30,7 @@ type Config struct {
 
 type BitCask struct {
 	activeFile *os.File
-	lockFile string
+	lock string
 	cursor int64
 	dirName string
 	keydir Keydir
@@ -44,8 +45,33 @@ func Open(directoryPath string, config ...Config) (*BitCask, error) {
 		os.MkdirAll(directoryPath, os.ModeDir | UserReadWriteExec)
 	}
 
+	var opts Config
+	var lock string
+	if config == nil {
+		opts = DefaultConfig
+	} else {
+		opts = config[0]
+	}
+
+	lockType := checkLock(directoryPath)
+	if  lockType == writer {
+		return nil, ErrBitCaskIsLocked
+	} else if lockType == reader {
+		if opts.writePermission {
+			return nil, ErrBitCaskIsLocked
+		}
+	} else {
+		if !opts.writePermission {
+			lock = readLock + strconv.Itoa(int(time.Now().UnixMicro()))
+		} else {
+			lock = writeLock + strconv.Itoa(int(time.Now().UnixMicro()))
+		}
+
+		lockFile, _ := os.OpenFile(path.Join(directoryPath, lock), os.O_CREATE, 0600)
+		lockFile.Close()
+	}
 	// build bitcask
-	bc, err := new(directoryPath, config)
+	bc, err := new(directoryPath, opts, lock)
 
 	return bc, err
 }
@@ -80,7 +106,7 @@ func (bc *BitCask) Get(key []byte) ([]byte, error) {
 			return nil, fmt.Errorf("read only " + fmt.Sprintf("%d", n) + " bytes out of " +
 							fmt.Sprintf("%d", record.valueSize))
 		}
-
+		file.Close()
 		return data, nil
 	}
 }
@@ -223,14 +249,15 @@ func (bc *BitCask) Sync() error {
 	return nil
 }
 
-func (bc *BitCask) Close() error {
+func (bc *BitCask) Close() {
 	if bc.config.writePermission {
 		bc.Sync()
 		bc.activeFile.Close()
 		bc.Merge()
-		// generateHintFiles()
+		bc.buildKeydirFile()
 	} else {
-		os.Remove(path.Join(bc.dirName, hintFileName))
+		os.Remove(path.Join(bc.dirName, keydirFileName))
 	}
-	return nil
+
+	os.Remove(path.Join(bc.dirName, bc.lock))
 }
