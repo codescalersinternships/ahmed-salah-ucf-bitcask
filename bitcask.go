@@ -74,7 +74,7 @@ func (bc *BitCask) Get(key []byte) ([]byte, error) {
 			return nil, fmt.Errorf("can't open file: " + record.fileId)
 		}
 		
-		n, err = file.ReadAt(data, int64(record.valuePosition))
+		n, err = file.ReadAt(data, record.valuePosition)
 		if err != nil {
 			return nil, fmt.Errorf("read only " + fmt.Sprintf("%d", n) + " bytes out of " +
 							fmt.Sprintf("%d", record.valueSize))

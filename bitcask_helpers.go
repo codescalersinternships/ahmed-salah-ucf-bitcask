@@ -82,7 +82,7 @@ func newFile(directoryPath string) (*os.File){
 	filename := fmt.Sprintf("%d" + BitCaskFileExtension, time.Now().UnixMilli())
 
 	file, _ = os.OpenFile(path.Join(directoryPath, filename), 
-							os.O_CREATE | os.O_WRONLY | os.O_APPEND, 
+							os.O_CREATE | os.O_RDWR | os.O_APPEND, 
 							0600)
 
 	return file
@@ -142,7 +142,10 @@ func (bc *BitCask) appendItemToFile(item []byte, currentCursorPos *int64, file *
 		*currentCursorPos = 0
 	}
 
-	n, _ := (*file).Write(item)
+	n, err := (*file).Write(item)
+	if err != nil {
+		fmt.Println("errrrrrrrrrrrrr " + err.Error())
+	}
 	*currentCursorPos += int64(n)
 }
 
