@@ -136,7 +136,7 @@ func (bc *BitCask) updateKeydirRecord (key, value []byte, fileName string, curre
 
 func (bc *BitCask) appendItemToFile(item []byte, currentCursorPos *int64, file **os.File) {
 	if int64(len(item)) + (*currentCursorPos) > MaxFileSize {
-		(*file).Close()
+		// (*file).Close()
 
 		*file = newFile(bc.dirName)
 		*currentCursorPos = 0
