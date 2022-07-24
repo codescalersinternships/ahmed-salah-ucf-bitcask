@@ -263,29 +263,29 @@ func TestPut(t *testing.T) {
         })
     }
 
-    var passMaxSizeTests = [] struct {
-        testName string
-        config Config
-    } {
-        {"pass MaxFileSize", RWsyncConfig},
-        {"pass MaxPendingSize", RWConfig},
-    }
-    for _, tt := range passMaxSizeTests {
-        t.Run(tt.testName, func(t *testing.T) {
-            os.RemoveAll(testBitcaskPath)
-            bc, _ := Open(testBitcaskPath, tt.config)
-            for i := 0; i < 100; i++ {
-                key := "key" + fmt.Sprintf("%d", i)
-                value := "value" + fmt.Sprintf("%d", i)
-                bc.Put([]byte(key), []byte(value))
-            }
+    // var passMaxSizeTests = [] struct {
+    //     testName string
+    //     config Config
+    // } {
+    //     {"pass MaxFileSize", RWsyncConfig},
+    //     {"pass MaxPendingSize", RWConfig},
+    // }
+    // for _, tt := range passMaxSizeTests {
+    //     t.Run(tt.testName, func(t *testing.T) {
+    //         os.RemoveAll(testBitcaskPath)
+    //         bc, _ := Open(testBitcaskPath, tt.config)
+    //         for i := 0; i < 100; i++ {
+    //             key := "key" + fmt.Sprintf("%d", i)
+    //             value := "value" + fmt.Sprintf("%d", i)
+    //             bc.Put([]byte(key), []byte(value))
+    //         }
             
-            got, _ := bc.Get([]byte("key5"))
+    //         got, _ := bc.Get([]byte("key5"))
             
-            assertEqualStrings(t, string(got), "value5")
-            os.RemoveAll(testBitcaskPath)
-        })
-    }
+    //         assertEqualStrings(t, string(got), "value5")
+    //         os.RemoveAll(testBitcaskPath)
+    //     })
+    // }
 }
 
 func TestDelete(t *testing.T) {
