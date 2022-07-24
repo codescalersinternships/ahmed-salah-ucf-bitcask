@@ -268,7 +268,7 @@ func TestListKeys(t *testing.T) {
         got := bc.ListKeys()
 
         if len(got) != 0 {
-            t.Errorf("length of keys list is %d, expected to get 0", got)
+            t.Errorf("length of keys list is %d, expected to get 0", len(got))
         }
         os.RemoveAll(testBitcaskPath)
     })
@@ -286,6 +286,10 @@ func TestListKeys(t *testing.T) {
         }
         os.RemoveAll(testBitcaskPath)
     })
+}
+
+func TestSync(t *testing.T) {
+
 }
 
 
