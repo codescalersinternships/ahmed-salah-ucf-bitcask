@@ -262,6 +262,50 @@ func TestPut(t *testing.T) {
     })
 }
 
+func TestDelete(t *testing.T) {
+    t.Run("passed nil key", func(t *testing.T) {
+        bc, _ := Open(testBitcaskPath, RWsyncConfig)
+            err := bc.Delete(nil)
+
+            assertErrorMsg(t, err, ErrNullKeyOrValue)
+            os.RemoveAll(testBitcaskPath)
+    })
+
+    t.Run("has no write permissions", func(t *testing.T) {
+        bc, _ := Open(testBitcaskPath)
+        err := bc.Delete([]byte("key"))
+
+        assertErrorMsg(t, err, ErrHasNoWritePerms)
+        os.RemoveAll(testBitcaskPath)
+    })
+
+    t.Run("delete with syncOnPut enabled", func(t *testing.T) {
+        bc, _ := Open(testBitcaskPath, RWsyncConfig)
+        bc.Put([]byte("key"), []byte("value"))
+        
+        bc.Delete([]byte("key"))
+
+        _, err := bc.Get([]byte("key"))
+		want := BitCaskError("\"key\": key doesn't exist")
+
+		assertErrorMsg(t, err, want)
+		os.RemoveAll(testBitcaskPath)
+    })
+
+    t.Run("delete with syncOnPut disabled", func(t *testing.T) {
+        bc, _ := Open(testBitcaskPath, RWConfig)
+        bc.Put([]byte("key"), []byte("value"))
+        
+        bc.Delete([]byte("key"))
+
+        _, err := bc.Get([]byte("key"))
+		want := BitCaskError("\"key\": key doesn't exist")
+
+		assertErrorMsg(t, err, want)
+		os.RemoveAll(testBitcaskPath)
+    })
+}
+
 func TestListKeys(t *testing.T) {
     // t.Run("empty bitcask", func(t *testing.T) {
     //     bc, _ := Open(testBitcaskPath)

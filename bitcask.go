@@ -118,7 +118,24 @@ func (bc *BitCask) Put(key, value []byte) error {
 }
 
 func (bc *BitCask) Delete(key []byte) error {
-	return nil
+	if key == nil {
+		return ErrNullKeyOrValue
+	}
+
+	if !bc.config.writePermission {
+		return ErrHasNoWritePerms
+	}
+
+	delete(bc.keydir, string(key))
+
+	var err error
+	if !bc.config.syncOnPut {
+		err = bc.loadToPendingWrites(key, []byte(TombStone))
+	} else {
+		bc.appendItem(key, []byte(TombStone))
+	}
+
+	return err
 }
 
 // ListKeys lists all the keys in a Bitcask store.
@@ -136,8 +153,12 @@ func (bc *BitCask) ListKeys() [][]byte {
 	return result
 }
 
-func (bc *BitCask) Fold(fn func([]byte, []byte), acc []byte) []byte {
-	return nil
+func (bc *BitCask) Fold(fn func([]byte, []byte) []byte, acc []byte) []byte {
+	for key := range bc.keydir {
+		acc = fn([]byte(key), acc)
+	}
+
+	return acc
 }
 
 func (bc *BitCask) Merge() error {
