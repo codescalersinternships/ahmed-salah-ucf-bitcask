@@ -138,9 +138,7 @@ func (bc *BitCask) Delete(key []byte) error {
 func (bc *BitCask) ListKeys() [][]byte {
 	var result [][]byte
 
-	for key := range pendingWrites {
-		result = append(result, []byte(key))
-	}
+	bc.Sync()
 
 	for key := range bc.keydir {
 		result = append(result, []byte(key))

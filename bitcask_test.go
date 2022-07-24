@@ -318,6 +318,7 @@ func TestListKeys(t *testing.T) {
     // })
 
     t.Run("list keys succesfully", func(t *testing.T) {
+        os.RemoveAll(testBitcaskPath)
         bc, _ := Open(testBitcaskPath, RWConfig)
         bc.Put([]byte("key"), []byte("value"))
         bc.Put([]byte("name"), []byte("salah"))
@@ -326,7 +327,7 @@ func TestListKeys(t *testing.T) {
         want := [][]byte {[]byte("key"), []byte("name")}
 
         if !reflect.DeepEqual(got, want) {
-            t.Errorf("got:\n%vwant:\n%v", got, want)
+            t.Errorf("got:\n%v\nwant:\n%v", got, want)
         }
         os.RemoveAll(testBitcaskPath)
     })
