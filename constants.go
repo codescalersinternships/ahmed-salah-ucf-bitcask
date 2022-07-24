@@ -12,7 +12,6 @@ const (
 	BitCaskFileExtension     = ".cask"
 	
 	MaxFileSize int64    = 1024
-	MaxPendingSize int64 = 1024
 
 	// UserReadOnly      = os.FileMode(0600)
 	UserReadWriteExec = os.FileMode(0700)

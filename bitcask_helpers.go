@@ -16,7 +16,6 @@ func new(directoryPath string, config Config, lock string) (*BitCask, error) {
 	var file *os.File
 	var keydir Keydir
 	var keydirData []byte
-	pendingWrites = make(map[string][]byte)
 
 	if config.writePermission {
 		file = newFile(directoryPath)
@@ -37,6 +36,7 @@ func new(directoryPath string, config Config, lock string) (*BitCask, error) {
 		dirName: directoryPath,
 		keydir: keydir,
 		config: config,
+		pendingWrites: make(map[string][]byte),
 	}
 
 	return bc, err
@@ -50,7 +50,7 @@ func (bc *BitCask) buildKeydirFile() {
 		valuePos := strconv.Itoa(int(record.valuePosition))
 		t := record.timeStamp.Format(time.RFC3339)
 
-		line := key + " " + valueSize + " " + valuePos + t
+		line := key + " " + record.fileId + " " + valueSize + " " + valuePos + " " + t
 		fmt.Fprintln(keyDirFile, line)
 	}
 }
@@ -67,14 +67,13 @@ func parseKeydirData(keydirData string) Keydir {
 		
 		keyAndValue := strings.Split(line, " ")
 		key := keyAndValue[0]
-		value := keyAndValue[1:]
-
-		vSz, _ = strconv.Atoi(value[1])
-		vPos, _ = strconv.Atoi(value[2])
-		t, _ = time.Parse(time.RFC3339, value[3])
+		fileId := keyAndValue[1]
+		vSz, _ = strconv.Atoi(keyAndValue[2])
+		vPos, _ = strconv.Atoi(keyAndValue[3])
+		t, _ = time.Parse(time.RFC3339, keyAndValue[4])
 		
 		keydir[key] = Record{
-			fileId: value[1],
+			fileId: fileId,
 			valueSize: vSz,
 			valuePosition: int64(vPos),
 			timeStamp: t,
@@ -102,14 +101,9 @@ func (bc *BitCask) isExist(key []byte) error {
 	return nil
 }
 
-func (bc *BitCask) loadToPendingWrites(key, value []byte) error {
-	var err error
-
-	if int64(len(pendingWrites)) > MaxPendingSize {
-		err = bc.Sync()
-	}
-	pendingWrites[string(key)] = value
-	return err
+func (bc *BitCask) loadToPendingWrites(key, value []byte) {
+	
+	bc.pendingWrites[string(key)] = value
 }
 
 func (bc *BitCask) makeItem(key, value []byte, timeStamp time.Time) []byte {

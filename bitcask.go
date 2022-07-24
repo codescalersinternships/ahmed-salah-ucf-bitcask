@@ -13,8 +13,6 @@ import (
 
 type Keydir map[string] Record
 
-var pendingWrites map[string][]byte
-
 type Record struct {
 	fileId string
 	valueSize int
@@ -27,7 +25,6 @@ type Config struct {
 	syncOnPut bool
 }
 
-
 type BitCask struct {
 	activeFile *os.File
 	lock string
@@ -35,7 +32,9 @@ type BitCask struct {
 	dirName string
 	keydir Keydir
 	config Config
+	pendingWrites map[string][]byte
 }
+
 
 // Open opens files at directory at path directoryName, and parses
 // these files into in-memory structure keydir. if the directory
@@ -88,7 +87,7 @@ func (bc *BitCask) Get(key []byte) ([]byte, error) {
 	var n int
 	var record Record
 
-	if value, ok := pendingWrites[string(key)]; ok {
+	if value, ok := bc.pendingWrites[string(key)]; ok {
 		return value, nil
 
 	} else if err := bc.isExist(key); err != nil {
@@ -124,11 +123,11 @@ func (bc *BitCask) Put(key, value []byte) error {
 
 	var err error
 	if !bc.config.syncOnPut {
-		if _, ok := pendingWrites[string(key)]; ok {
-			pendingWrites[string(key)] = value
+		if _, ok := bc.pendingWrites[string(key)]; ok {
+			bc.pendingWrites[string(key)] = value
 
 		} else {
-			err = bc.loadToPendingWrites(key, value)
+			bc.loadToPendingWrites(key, value)
 		}
 
 	} else {
@@ -153,7 +152,7 @@ func (bc *BitCask) Delete(key []byte) error {
 		return ErrHasNoWritePerms
 	}
 
-	delete(pendingWrites, string(key))
+	delete(bc.pendingWrites, string(key))
 
 	delete(bc.keydir, string(key))
 
@@ -239,11 +238,11 @@ func (bc *BitCask) Sync() error {
 		return ErrHasNoWritePerms
 	}
 
-	for key := range pendingWrites {
-		item := bc.makeItem([]byte(key), pendingWrites[key], bc.keydir[string(key)].timeStamp)
-		bc.updateKeydirRecord([]byte(key), pendingWrites[key], bc.activeFile.Name(), int64(bc.cursor), time.Now())
+	for key := range bc.pendingWrites {
+		item := bc.makeItem([]byte(key), bc.pendingWrites[key], bc.keydir[string(key)].timeStamp)
+		bc.updateKeydirRecord([]byte(key), bc.pendingWrites[key], bc.activeFile.Name(), int64(bc.cursor), time.Now())
 		bc.appendItemToFile(item, &bc.cursor, &bc.activeFile)
-		delete(pendingWrites, key)
+		delete(bc.pendingWrites, key)
 	}
 
 	return nil

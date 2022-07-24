@@ -47,16 +47,15 @@ func TestOpen(t *testing.T) {
 	})
 
 	t.Run("existing bitcask with read and write permission", func(t *testing.T) {
-		Open(testBitcaskPath, RWConfig)
+		bc1, _ := Open(testBitcaskPath, RWConfig)
+        bc1.Put([]byte("key1"), []byte("value1"))
+        bc1.Close()
 
-		testKeyDir, _ := os.Create(testKeyDirPath)
-		fmt.Fprintln(testKeyDir, "key 1 50 0 3")
-
-		Open(testBitcaskPath, RWConfig)
-
-		if _, err := os.Stat(testBitcaskPath); os.IsNotExist(err) {
-		    t.Errorf("expected to find directory: %q", testBitcaskPath)
-		}
+        bc2, _ := Open(testBitcaskPath, RWConfig)
+        got, _ := bc2.Get([]byte("key1"))
+        bc2.Close()
+		
+        assertEqualStrings(t, string(got), "value1")
 		os.RemoveAll(testBitcaskPath)
 	})
 
@@ -100,9 +99,44 @@ func TestOpen(t *testing.T) {
 		os.RemoveAll(testNoOpenDirPath)
 	})
 
-    /* To-Do:  "concurrent process load exist keydir" test
-		
-	*/
+    t.Run("concurrent readers", func(t *testing.T) {
+        bc1, _ := Open(testBitcaskPath, RWsyncConfig)
+        bc1.Put([]byte("key1"), []byte("value1"))
+        bc1.Put([]byte("key2"), []byte("value2"))
+        bc1.Close()
+
+        bc2, _ := Open(testBitcaskPath)
+        bc3, _ := Open(testBitcaskPath)
+
+        got, _ := bc2.Get([]byte("key2"))
+        assertEqualStrings(t, string(got), "value2")
+        bc2.Close()
+
+        got, _ = bc3.Get([]byte("key2"))
+        assertEqualStrings(t, string(got), "value2")
+        bc3.Close()
+
+        os.RemoveAll(testBitcaskPath)
+    })
+
+    t.Run("concurrent writers", func(t *testing.T) {
+        bc1, _ := Open(testBitcaskPath, RWsyncConfig)
+        bc1.Put([]byte("key1"), []byte("value1"))
+
+        _, err := Open(testBitcaskPath, RWConfig)
+
+        assertErrorMsg(t, err, ErrBitCaskIsLocked)
+        os.RemoveAll(testBitcaskPath)
+    })
+
+    t.Run("writer comes after reader", func(t *testing.T) {
+        Open(testBitcaskPath)
+
+        _, err := Open(testBitcaskPath, RWConfig)
+
+        assertErrorMsg(t, err, ErrBitCaskIsLocked)
+        os.RemoveAll(testBitcaskPath)
+    })
 }
 
 func TestGet(t *testing.T) {
@@ -126,9 +160,10 @@ func TestGet(t *testing.T) {
 	t.Run("data in pending writes", func(t *testing.T) {
         bc, _ := Open(testBitcaskPath, syncConfig)
         bc.keydir["name"] = Record{}
-        pendingWrites["name"] = []byte("salah")
+        bc.pendingWrites["name"] = []byte("salah")
         got, _ := bc.Get([]byte("name"))
         want := "salah"
+        bc.Close()
 
         assertEqualStrings(t, string(got), want)
         os.RemoveAll(testBitcaskPath)
@@ -268,7 +303,6 @@ func TestPut(t *testing.T) {
         config Config
     } {
         {"pass MaxFileSize", RWsyncConfig},
-        {"pass MaxPendingSize", RWConfig},
     }
     for _, tt := range passMaxSizeTests {
         t.Run(tt.testName, func(t *testing.T) {
@@ -393,7 +427,6 @@ func TestMerge(t *testing.T) {
         config Config
     } {
         {"merge files successfully", RWsyncConfig},
-        // {"merge files with pendding writes", RWConfig},
     }
     for _, tt := range tests {
         t.Run(tt.testName, func(t *testing.T) {
