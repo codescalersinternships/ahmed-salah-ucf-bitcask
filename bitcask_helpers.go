@@ -105,13 +105,11 @@ func (bc *BitCask) loadToPendingWrites(key, value []byte) error {
 	return err
 }
 
-func (bc *BitCask) appendItem(key, value []byte) {
+func (bc *BitCask) appendItem(key, value, item []byte) {
 
 	if string(value) != TombStone {
 		bc.updateKeydirRecord(key, value, bc.activeFile.Name(), int64(bc.cursor), time.Now())
 	}
-	
-	item := bc.makeItem(key, value, bc.keydir[string(key)].timeStamp)
 
 	bc.appendItemToActiveFile(item)
 }
@@ -152,6 +150,8 @@ func (bc *BitCask) appendItemToActiveFile(item []byte) {
 	bc.cursor += int64(n)
 }
 
+
+
 func (bc *BitCask) updateKeydirRecord (key, value []byte, fileName string, currentCursorPos int64, tStamp time.Time) {
 	bc.keydir[string(key)] = Record {
 		fileId: fileName,
@@ -160,3 +160,10 @@ func (bc *BitCask) updateKeydirRecord (key, value []byte, fileName string, curre
 		timeStamp: tStamp,
 	}
 }
+
+func (bc *BitCask) deleteOldFiles(oldFiles map[string] void) {
+	for oldFile := range oldFiles {
+		os.Remove(path.Join(bc.dirName, oldFile))
+	}
+}
+

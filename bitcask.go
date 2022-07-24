@@ -105,7 +105,8 @@ func (bc *BitCask) Put(key, value []byte) error {
 		}
 
 	} else {
-		bc.appendItem(key, value)
+		item := bc.makeItem(key, value, bc.keydir[string(key)].timeStamp)
+		bc.appendItem(key, value, item)
 	}
 	
 	return err
@@ -128,7 +129,8 @@ func (bc *BitCask) Delete(key []byte) error {
 
 	delete(bc.keydir, string(key))
 
-	bc.appendItem(key, []byte(TombStone))
+	item := bc.makeItem(key, []byte(TombStone), bc.keydir[string(key)].timeStamp)
+	bc.appendItem(key, []byte(TombStone), item)
 
 	return nil
 }
@@ -160,38 +162,30 @@ func (bc *BitCask) Merge() error {
 		return ErrHasNoWritePerms
 	}
 	bc.Sync()
-	var currentCursor int64 = 0
+	var currentCursorPos int64 = 0
 
-	oldFiles := make(map[string]void)
+	oldFilesSet := make(map[string]void)
 	mergeFile := newFile(bc.dirName)
 
 	for key, record := range bc.keydir {
 		if record.fileId != bc.activeFile.Name() {
-			oldFiles[record.fileId] = member
+			oldFilesSet[record.fileId] = member
 			tStamp := time.Now()
 			value, _ := bc.Get([]byte(key))
 			fileItem := bc.makeItem([]byte(key), value, tStamp)
 
-			bc.updateKeydirRecord([]byte(key), value, mergeFile.Name(), currentCursor, tStamp)
-			bc.keydir[key] = Record{
-				fileId: mergeFile.Name(),
-				valueSize: len(value),
-				valuePosition: int64(currentCursor + 16 + int64(len(key))),
-				timeStamp: tStamp,
-			}
+			bc.updateKeydirRecord([]byte(key), value, mergeFile.Name(), currentCursorPos, tStamp)
 
-			if int64(len(fileItem)) + currentCursor > MaxFileSize {
+			if int64(len(fileItem)) + currentCursorPos > MaxFileSize {
 				mergeFile.Close()
 				mergeFile = newFile(bc.dirName)
-				currentCursor = 0
+				currentCursorPos = 0
 			}
 			n, _ := mergeFile.Write(fileItem)
-			currentCursor += int64(n)
+			currentCursorPos += int64(n)
 		}
 	}
-	for oldFile := range oldFiles {
-		os.Remove(path.Join(bc.dirName, oldFile))
-	}
+	bc.deleteOldFiles(oldFilesSet)
 
 	return nil
 }
@@ -209,7 +203,8 @@ func (bc *BitCask) Sync() error {
 	}
 
 	for key := range pendingWrites {
-		bc.appendItem([]byte(key), pendingWrites[key])
+		item := bc.makeItem([]byte(key), pendingWrites[key], bc.keydir[string(key)].timeStamp)
+		bc.appendItem([]byte(key), pendingWrites[key], item)
 		delete(pendingWrites, key)
 	}
 
