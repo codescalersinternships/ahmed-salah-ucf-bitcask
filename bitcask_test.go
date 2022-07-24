@@ -61,8 +61,8 @@ func TestOpen(t *testing.T) {
 	t.Run("existing bitcask with sync permission", func(t *testing.T) {
 		Open(testBitcaskPath, syncConfig)
 
-		testKeyDir, _ := os.Create(testKeyDirPath)
-		fmt.Fprintln(testKeyDir, "key 1 50 0 3")
+        testKeyDir, _ := os.Create(testKeyDirPath)
+        fmt.Fprintln(testKeyDir, "key 1 20 2 3")
 
 		Open(testBitcaskPath, syncConfig)
 
@@ -89,11 +89,11 @@ func TestOpen(t *testing.T) {
 	})
 
 	t.Run("bitcask has no permissions", func(t *testing.T) {
-		os.MkdirAll(testNoOpenDirPath, 000)
-		_, err := Open(testNoOpenDirPath)
-		if err == nil {
-		    t.Fatal("expected Error since path cannot be openned")
-		}
+        os.MkdirAll(testNoOpenDirPath, NoPermissions)
+        _, err := Open(testNoOpenDirPath)
+        if err == nil {
+            t.Fatal("expected Error since path cannot be openned")
+        }
 
 		os.RemoveAll(testNoOpenDirPath)
 	})
@@ -105,11 +105,11 @@ func TestOpen(t *testing.T) {
 
 func TestGet(t *testing.T) {
 	t.Run("key is nil", func(t *testing.T) {
-		bc, _ := Open(testBitcaskPath)
-		_, err := bc.Get(nil)
+        bc, _ := Open(testBitcaskPath)
+        _, err := bc.Get(nil)
 
-		assertErrorMsg(t, err, ErrNullKeyOrValue)
-        	os.RemoveAll(testBitcaskPath)
+        assertErrorMsg(t, err, ErrNullKeyOrValue)
+        os.RemoveAll(testBitcaskPath)
 	})
 
     t.Run("key doesn't exist", func(t *testing.T) {
@@ -122,18 +122,18 @@ func TestGet(t *testing.T) {
     })
 
 	t.Run("data in pending writes", func(t *testing.T) {
-		bc, _ := Open(testBitcaskPath, syncConfig)
-		bc.keydir["name"] = Record{}
-		pendingWrites["name"] = []byte("salah")
-		got, _ := bc.Get([]byte("name"))
-		want := "salah"
+        bc, _ := Open(testBitcaskPath, syncConfig)
+        bc.keydir["name"] = Record{}
+        pendingWrites["name"] = []byte("salah")
+        got, _ := bc.Get([]byte("name"))
+        want := "salah"
 
-		assertEqualStrings(t, string(got), want)
-		os.RemoveAll(testBitcaskPath)
+        assertEqualStrings(t, string(got), want)
+        os.RemoveAll(testBitcaskPath)
 	})
 
     t.Run("existing value from file", func(t *testing.T) {
-        os.MkdirAll(testBitcaskPath, 0700)
+        os.MkdirAll(testBitcaskPath, UserReadWriteExec)
         file, _ := os.Create(testFilePath)
 
         bc, _ := Open(testBitcaskPath)
@@ -155,7 +155,7 @@ func TestGet(t *testing.T) {
     })
 
     t.Run("read number of bytes less than size of value", func(t *testing.T) {
-        os.MkdirAll(testBitcaskPath, 0700)
+        os.MkdirAll(testBitcaskPath, UserReadWriteExec)
         file, _ := os.Create(testFilePath)
 
         bc, _ := Open(testBitcaskPath)

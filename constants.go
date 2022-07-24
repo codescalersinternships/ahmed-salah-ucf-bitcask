@@ -1,23 +1,34 @@
 package bitcask
 
-import "path"
+import (
+	"os"
+	"path"
+)
 
 const (
-	TombStone     = "bitcask_tombstone"
-	MaxFileSize = 2147483648
+	TombStone                = "bitcask_tombstone"
+	keydirFileRecordSeprator = " "
+	keydirFileName           = "keydir.cask"
+	BitCaskFileExtension     = ".cask"
+	
+	MaxFileSize    = 2147483648
 	MaxPendingSize = 1024
+
+	UserReadOnly      = os.FileMode(0400)
+	UserReadWriteExec = os.FileMode(0700)
+	NoPermissions     = os.FileMode(0000)
 )
 
 var (
 	DefaultConfig = Config {writePermission: false, syncOnPut: false}
-	RWConfig = Config {writePermission: true, syncOnPut: false}
-	syncConfig = Config {writePermission: false, syncOnPut: true}
-	RWsyncConfig = Config {writePermission: true, syncOnPut: true}
+	RWConfig      = Config {writePermission: true, syncOnPut: false}
+	syncConfig    = Config {writePermission: false, syncOnPut: true}
+	RWsyncConfig  = Config {writePermission: true, syncOnPut: true}
 )
 
 var (
-	testBitcaskPath = path.Join("bitcask")
-	testKeyDirPath = path.Join("bitcask", "keydir.cask")
+	testBitcaskPath   = path.Join("bitcask")
+	testKeyDirPath    = path.Join("bitcask", "keydir.cask")
 	testNoOpenDirPath = path.Join("no_open_directory")
-	testFilePath = path.Join("bitcask", "testfile.cask")
+	testFilePath      = path.Join("bitcask", "testfile.cask")
 )

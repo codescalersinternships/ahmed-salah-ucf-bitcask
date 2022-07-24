@@ -12,12 +12,40 @@ import (
 	"time"
 )
 
+func new(directoryPath string, config []Config) (*BitCask, error) {
+	var opts Config
+	var file *os.File
+	var keydir Keydir
+	var keydirData []byte
+	pendingWrites = make(map[string][]byte)
 
-func (bc *BitCask) isExist(key []byte) error {
-	if _, ok := bc.keydir[string(key)]; !ok {
-		return BitCaskError(fmt.Sprintf("%q: %s", string(key), ErrKeyNotExist.Error()))
+	if config == nil {
+		opts = DefaultConfig
+	} else {
+		opts = config[0]
 	}
-	return nil
+
+	if opts.writePermission {
+		file = newActiveFile(directoryPath, opts)
+	}
+	
+
+	keydirData, err := os.ReadFile(path.Join(directoryPath, keydirFileName))
+	if err != nil {
+		keydir = Keydir{}
+	} else {
+		keydir = parseKeydirData(string(keydirData))
+	}
+
+	bc := &BitCask{
+		activeFile: file,
+		cursor: 0,
+		dirName: directoryPath,
+		keydir: keydir,
+		config: opts,
+	}
+
+	return bc, err
 }
 
 func parseKeydirData(keydirData string) Keydir {
@@ -51,48 +79,47 @@ func parseKeydirData(keydirData string) Keydir {
 
 func newActiveFile(directoryPath string, config Config) (*os.File){
 	var file *os.File
-	filename := fmt.Sprintf("%d.cask", time.Now().UnixMilli())
-	if config.writePermission {
-		file, _ = os.OpenFile(path.Join(directoryPath, filename), os.O_CREATE, 0600)
-	} else {
-		file, _ = os.OpenFile(path.Join(directoryPath, filename), os.O_CREATE, 0400)
-	}
+	filename := fmt.Sprintf("%d" + BitCaskFileExtension, time.Now().UnixMilli())
+
+	file, _ = os.OpenFile(path.Join(directoryPath, filename), 
+							os.O_CREATE | os.O_WRONLY | os.O_APPEND, 
+							UserReadOnly)
 
 	return file
 }
 
-func new(directoryPath string, config []Config) (*BitCask, error) {
-	var opts Config
-	var file *os.File
-	var keydir Keydir
-	var keydirData []byte
-	pendingWrites = make(map[string][]byte)
-
-	if config == nil {
-		opts = DefaultConfig
-	} else {
-		opts = config[0]
+func (bc *BitCask) isExist(key []byte) error {
+	if _, ok := bc.keydir[string(key)]; !ok {
+		return BitCaskError(fmt.Sprintf("%q: %s", string(key), ErrKeyNotExist.Error()))
 	}
+	return nil
+}
 
-	file = newActiveFile(directoryPath, opts)
+func (bc *BitCask) loadToPendingWrites(key, value []byte) error {
+	var err error
+	if len(pendingWrites) > MaxPendingSize {
+		err = bc.Sync()
+		for k := range pendingWrites {
+			delete(pendingWrites, k)
+		}
+		pendingWrites[string(key)] = value
+	}
+	return err
+}
+
+func (bc *BitCask) appendItem(key, value []byte) error {
+
+	tStamp := time.Now()
+	item := bc.makeItem(key, value, tStamp)
 	
-
-	keydirData, err := os.ReadFile(path.Join(directoryPath, "keydir.cask"))
+	err := bc.appendItemToActiveFile(item)
 	if err != nil {
-		keydir = Keydir{}
-	} else {
-		keydir = parseKeydirData(string(keydirData))
+		return err
 	}
 
-	bc := &BitCask{
-		activeFile: file,
-		cursor: 0,
-		dirName: directoryPath,
-		keydir: keydir,
-		config: opts,
-	}
+	bc.updateKeydir(key, value, tStamp)
 
-	return bc, err
+	return nil
 }
 
 func (bc *BitCask) makeItem(key, value []byte, timeStamp time.Time) []byte {
@@ -113,18 +140,6 @@ func (bc *BitCask) makeItem(key, value []byte, timeStamp time.Time) []byte {
 	binary.BigEndian.PutUint32(item[:], crc)
 
 	return item
-}
-
-func (bc *BitCask) loadToPendingWrites(key, value []byte) error {
-	var err error
-	if len(pendingWrites) > MaxPendingSize {
-		err = bc.Sync()
-		for k := range pendingWrites {
-			delete(pendingWrites, k)
-		}
-		pendingWrites[string(key)] = value
-	}
-	return err
 }
 
 func (bc *BitCask) appendItemToActiveFile(item []byte) error {
@@ -153,19 +168,4 @@ func (bc *BitCask) updateKeydir (key, value []byte, tStamp time.Time) {
 		valuePosition: int64(bc.cursor + 16 + len(key)),
 		timeStamp: tStamp,
 	}
-}
-
-func (bc *BitCask) appendItem(key, value []byte) error {
-
-	tStamp := time.Now()
-	item := bc.makeItem(key, value, tStamp)
-	
-	err := bc.appendItemToActiveFile(item)
-	if err != nil {
-		return err
-	}
-
-	bc.updateKeydir(key, value, tStamp)
-
-	return nil
 }

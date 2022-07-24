@@ -39,7 +39,7 @@ type BitCask struct {
 // doesn't exist at this path, it creates a new directory. 
 func Open(directoryPath string, config ...Config) (*BitCask, error) {
 	if _, err := os.Stat(directoryPath); os.IsNotExist(err) {
-		os.MkdirAll(directoryPath, 0700)
+		os.MkdirAll(directoryPath, os.ModeDir | UserReadWriteExec)
 	}
 
 	// build bitcask
