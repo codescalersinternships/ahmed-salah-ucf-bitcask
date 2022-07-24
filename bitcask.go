@@ -145,9 +145,10 @@ func (bc *BitCask) ListKeys() [][]byte {
 	return result
 }
 
-func (bc *BitCask) Fold(fn func([]byte, []byte) []byte, acc []byte) []byte {
+func (bc *BitCask) Fold(fn func([]byte, []byte, any) any, acc any) any {
 	for key := range bc.keydir {
-		acc = fn([]byte(key), acc)
+		value, _ := bc.Get([]byte(key))
+		acc = fn([]byte(key), value, acc)
 	}
 
 	return acc

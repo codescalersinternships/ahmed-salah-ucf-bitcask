@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -329,6 +330,26 @@ func TestListKeys(t *testing.T) {
         }
         os.RemoveAll(tetsListKeyBitcaskPath)
     })
+}
+
+func TestFold(t *testing.T) {
+    bc, _ := Open(testBitcaskPath, RWsyncConfig)
+    bc.Put([]byte("key1"), []byte("1"))
+    bc.Put([]byte("key2"), []byte("2"))
+    bc.Put([]byte("key3"), []byte("3"))
+
+    sum := func(key, value []byte, acc any) any {
+        val, _ := strconv.Atoi(string(value))
+
+        return val + acc.(int)
+    }
+
+    got := bc.Fold(sum, 0)
+    want := 6
+
+    if got != want {
+        t.Errorf("got:\n%d\nwant:\n%d\n", got, want)
+    }
 }
 
 func TestSync(t *testing.T) {
