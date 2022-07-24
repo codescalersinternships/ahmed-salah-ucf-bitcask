@@ -29,6 +29,7 @@ type Config struct {
 
 type BitCask struct {
 	activeFile *os.File
+	lockFile string
 	cursor int64
 	dirName string
 	keydir Keydir
@@ -173,18 +174,27 @@ func (bc *BitCask) Merge() error {
 	var currentCursorPos int64 = 0
 	oldFilesSet := make(map[string]void)
 	mergeFile := newFile(bc.dirName)
+	var newKeydir Keydir = make(Keydir)
 
 	for key, record := range bc.keydir {
 		if record.fileId != bc.activeFile.Name() {
 			oldFilesSet[record.fileId] = member
 			tStamp := time.Now()
 			value, _ := bc.Get([]byte(key))
-
-			bc.updateKeydirRecord([]byte(key), value, mergeFile.Name(), currentCursorPos, tStamp)
+			
 			fileItem := bc.makeItem([]byte(key), value, tStamp)
-			bc.appendItemToFile(fileItem, &currentCursorPos, &mergeFile)
+			valuePos := bc.appendItemToFile(fileItem, &currentCursorPos, &mergeFile)
+			newKeydir[key] = Record {
+				fileId: mergeFile.Name(),
+				valueSize: len(value),
+				valuePosition: int64(valuePos + int64(16) + int64(len(key))),
+				timeStamp: tStamp,
+			}
+		} else {
+			newKeydir[key] = bc.keydir[key]
 		}
 	}
+	bc.keydir = newKeydir
 
 	bc.deleteOldFiles(oldFilesSet)
 

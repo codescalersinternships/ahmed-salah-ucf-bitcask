@@ -79,10 +79,10 @@ func parseKeydirData(keydirData string) Keydir {
 
 func newFile(directoryPath string) (*os.File){
 	var file *os.File
-	filename := fmt.Sprintf("%d" + BitCaskFileExtension, time.Now().UnixMilli())
+	filename := fmt.Sprintf("%d" + BitCaskFileExtension, time.Now().UnixMicro())
 
 	file, _ = os.OpenFile(path.Join(directoryPath, filename), 
-							os.O_CREATE | os.O_RDWR | os.O_APPEND, 
+							os.O_CREATE | os.O_RDWR, 
 							0600)
 
 	return file
@@ -106,7 +106,7 @@ func (bc *BitCask) loadToPendingWrites(key, value []byte) error {
 }
 
 func (bc *BitCask) makeItem(key, value []byte, timeStamp time.Time) []byte {
-	tStamp := uint32(timeStamp.Unix())
+	tStamp := uint32(timeStamp.UnixMicro())
 	keySize := uint32(len(key))
 	valueSize := uint32(len(value))
 
@@ -134,19 +134,18 @@ func (bc *BitCask) updateKeydirRecord (key, value []byte, fileName string, curre
 	}
 }
 
-func (bc *BitCask) appendItemToFile(item []byte, currentCursorPos *int64, file **os.File) {
+func (bc *BitCask) appendItemToFile(item []byte, currentCursorPos *int64, file **os.File) int64 {
 	if int64(len(item)) + (*currentCursorPos) > MaxFileSize {
 		(*file).Close()
 
 		*file = newFile(bc.dirName)
 		*currentCursorPos = 0
 	}
-
-	n, err := (*file).Write(item)
-	if err != nil {
-		fmt.Println("errrrrrrrrrrrrr " + err.Error())
-	}
+	valuePosition := *currentCursorPos
+	n, _ := (*file).Write(item)
 	*currentCursorPos += int64(n)
+
+	return valuePosition
 }
 
 func (bc *BitCask) deleteOldFiles(oldFiles map[string] void) {
