@@ -10,6 +10,9 @@ import (
 	"time"
 )
 
+// processAccess is a type for determining the access permission of existing process.
+type processAccess int
+
 
 type Keydir map[string] Record
 
@@ -20,11 +23,15 @@ type Record struct {
 	timeStamp time.Time
 }
 
+// Config contains the data for configuration options that the
+// user passes to Open function.
 type Config struct {
 	writePermission bool
 	syncOnPut bool
 }
 
+// Bitcask contains the data needed to manipulate the bitcask datastore.
+// user creates an object of it to use the bitcask.
 type BitCask struct {
 	activeFile *os.File
 	lock string
@@ -70,9 +77,9 @@ func Open(directoryPath string, config ...Config) (*BitCask, error) {
 		lockFile.Close()
 	}
 	// build bitcask
-	bc, err := new(directoryPath, opts, lock)
+	bc := new(directoryPath, opts, lock)
 
-	return bc, err
+	return bc, nil
 }
 
 // Get retrieves a value by key from a bitcask data store.
@@ -175,6 +182,8 @@ func (bc *BitCask) ListKeys() [][]byte {
 	return result
 }
 
+// Fold folds over all key/value pairs in a bitcask datastore.
+// fn is expected to be closure in the form: F(K, V, Acc) -> Acc
 func (bc *BitCask) Fold(fn func([]byte, []byte, any) any, acc any) any {
 	for key := range bc.keydir {
 		value, _ := bc.Get([]byte(key))
@@ -194,34 +203,35 @@ func (bc *BitCask) Merge() error {
 		return ErrHasNoWritePerms
 	}
 	
-	bc.Sync()
-
 	var currentCursorPos int64 = 0
-	oldFilesSet := make(map[string]void)
+	newFilesSet := make(map[string]void)
 	mergeFile := newFile(bc.dirName)
 	var newKeydir Keydir = make(Keydir)
 
+	bc.Sync()
+
 	for key, record := range bc.keydir {
 		if record.fileId != bc.activeFile.Name() {
-			oldFilesSet[record.fileId] = member
 			tStamp := time.Now()
 			value, _ := bc.Get([]byte(key))
 			
 			fileItem := bc.makeItem([]byte(key), value, tStamp)
-			valuePos := bc.appendItemToFile(fileItem, &currentCursorPos, &mergeFile)
+			itemBegin := bc.appendItemToFile(fileItem, &currentCursorPos, &mergeFile)
+			newFilesSet[mergeFile.Name()] = member
 			newKeydir[key] = Record {
 				fileId: mergeFile.Name(),
 				valueSize: len(value),
-				valuePosition: int64(valuePos + int64(16) + int64(len(key))),
+				valuePosition: int64(itemBegin + int64(16) + int64(len(key))),
 				timeStamp: tStamp,
 			}
 		} else {
 			newKeydir[key] = bc.keydir[key]
+			newFilesSet[record.fileId] = member
 		}
 	}
 	bc.keydir = newKeydir
 
-	bc.deleteOldFiles(oldFilesSet)
+	bc.deleteOldFiles(newFilesSet)
 
 	return nil
 }
@@ -248,14 +258,14 @@ func (bc *BitCask) Sync() error {
 	return nil
 }
 
+// Close flushes all pending writes into disk, merges old files,
+// removes read/write locks, builds keydir file and closes the bitcask datastore.
 func (bc *BitCask) Close() {
 	if bc.config.writePermission {
 		bc.Sync()
 		bc.activeFile.Close()
 		bc.Merge()
 		bc.buildKeydirFile()
-	} else {
-		os.Remove(path.Join(bc.dirName, keydirFileName))
 	}
 
 	os.Remove(path.Join(bc.dirName, bc.lock))

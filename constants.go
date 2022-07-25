@@ -13,8 +13,8 @@ const (
 	
 	MaxFileSize int64    = 1024
 
-	// UserReadOnly      = os.FileMode(0600)
-	UserReadWriteExec = os.FileMode(0700)
+	UserReadWrite      = os.FileMode(0666)
+	UserReadWriteExec = os.FileMode(0777)
 	NoPermissions     = os.FileMode(0000)
 )
 
@@ -30,14 +30,11 @@ var (
 	tetsListKeyBitcaskPath   = path.Join("bitcask_list")
 	testBitcaskMergePath   = path.Join("bitcask_merge")
 	testKeyDirPath    = path.Join("bitcask", "keydir.cask")
-	testNoOpenDirPath = path.Join("no_open_directory")
 	testFilePath      = path.Join("bitcask", "testfile.cask")
 )
 
 type void struct{}
 var member void
-
-type processAccess int
 
 const (
 	reader      processAccess = 0

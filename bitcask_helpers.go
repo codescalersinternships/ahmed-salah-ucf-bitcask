@@ -12,7 +12,9 @@ import (
 	"time"
 )
 
-func new(directoryPath string, config Config, lock string) (*BitCask, error) {
+
+// new creates a new bitcask object.
+func new(directoryPath string, config Config, lock string) *BitCask {
 	var file *os.File
 	var keydir Keydir
 	var keydirData []byte
@@ -39,9 +41,12 @@ func new(directoryPath string, config Config, lock string) (*BitCask, error) {
 		pendingWrites: make(map[string][]byte),
 	}
 
-	return bc, err
+	return bc
 }
 
+// buildKeydirFile builds the keydir file format from the process's keydir records.
+// coming processes after this process finish writing will parse this file to build
+// keydir object in memory.
 func (bc *BitCask) buildKeydirFile() {
 	keyDirFile, _ := os.Create(path.Join(bc.dirName, keydirFileName))
 
@@ -55,6 +60,7 @@ func (bc *BitCask) buildKeydirFile() {
 	}
 }
 
+// parseKeydirData parses keydir file to build keydir object
 func parseKeydirData(keydirData string) Keydir {
 	var keydir Keydir = Keydir{}
 	var vSz int
@@ -83,17 +89,21 @@ func parseKeydirData(keydirData string) Keydir {
 	return keydir
 }
 
+// newFile creates new file to be used as active or merge file.
+// the name of the file is specified by the time.Now().UnixMicro() function.
 func newFile(directoryPath string) (*os.File){
 	var file *os.File
 	filename := fmt.Sprintf("%d" + BitCaskFileExtension, time.Now().UnixMicro())
 
 	file, _ = os.OpenFile(path.Join(directoryPath, filename), 
 							os.O_CREATE | os.O_RDWR, 
-							0600)
+							UserReadWrite)
 
 	return file
 }
 
+
+// isExist checks if the key exist in keydir
 func (bc *BitCask) isExist(key []byte) error {
 	if _, ok := bc.keydir[string(key)]; !ok {
 		return BitCaskError(fmt.Sprintf("%q: %s", string(key), ErrKeyNotExist.Error()))
@@ -101,11 +111,13 @@ func (bc *BitCask) isExist(key []byte) error {
 	return nil
 }
 
+// loadToPendingWrites load key and value to pending wirtes memory
 func (bc *BitCask) loadToPendingWrites(key, value []byte) {
 	
 	bc.pendingWrites[string(key)] = value
 }
 
+// makeItem creates an bitcask file item 
 func (bc *BitCask) makeItem(key, value []byte, timeStamp time.Time) []byte {
 	tStamp := uint32(timeStamp.UnixMicro())
 	keySize := uint32(len(key))
@@ -126,6 +138,7 @@ func (bc *BitCask) makeItem(key, value []byte, timeStamp time.Time) []byte {
 	return item
 }
 
+// updateKeydirRecord updates keydir at specific key
 func (bc *BitCask) updateKeydirRecord (key, value []byte, fileName string, currentCursorPos int64, tStamp time.Time) {
 	bc.keydir[string(key)] = Record {
 		fileId: fileName,
@@ -135,6 +148,7 @@ func (bc *BitCask) updateKeydirRecord (key, value []byte, fileName string, curre
 	}
 }
 
+// appendItemToFile appends item to bitcask file
 func (bc *BitCask) appendItemToFile(item []byte, currentCursorPos *int64, file **os.File) int64 {
 	if int64(len(item)) + (*currentCursorPos) > MaxFileSize {
 		(*file).Close()
@@ -149,12 +163,19 @@ func (bc *BitCask) appendItemToFile(item []byte, currentCursorPos *int64, file *
 	return valuePosition
 }
 
-func (bc *BitCask) deleteOldFiles(oldFiles map[string] void) {
-	for oldFile := range oldFiles {
-		os.Remove(path.Join(bc.dirName, oldFile))
+// deleteOldFiles delete unneeded files remains after merge process
+func (bc *BitCask) deleteOldFiles(newFilesSet map[string] void) {
+	bitcaskDirectory, _ := os.Open(bc.dirName)
+	files, _ := bitcaskDirectory.Readdir(0)
+
+	for _, fileInfo := range files {
+		if _, ok := newFilesSet[bc.dirName+"/"+fileInfo.Name()]; !ok {
+			os.Remove(bc.dirName+"/"+fileInfo.Name())
+		}
 	}
 }
 
+// checkLock checks the existance of read/write lock
 func checkLock(dirName string) processAccess {
 	bitcaskDirectory, _ := os.Open(dirName)
 	files, _ := bitcaskDirectory.Readdir(0)
