@@ -47,8 +47,8 @@ type BitCask struct {
 // these files into in-memory structure keydir. if the directory
 // doesn't exist at this path, it creates a new directory. 
 func Open(directoryPath string, config ...Config) (*BitCask, error) {
-	if _, err := os.Stat(directoryPath); os.IsNotExist(err) {
-		os.MkdirAll(directoryPath, os.ModeDir | UserReadWriteExec)
+	if err := os.MkdirAll(directoryPath, os.ModeDir | UserReadWriteExec); err != nil {
+		return nil, err
 	}
 
 	var opts Config
